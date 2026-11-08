@@ -7,6 +7,7 @@ Um jogo de ondas (survivor-like) com progressão incremental, no ciberespaço do
 ## Jogar
 
 - **O executável (Windows e Linux):** a cada envio, o GitHub Actions gera o jogo empacotado, sem precisar de Python. Para baixar: aba **Actions** → **empacotar** → a execução mais recente → **Artifacts** → `blackwall-dive-Windows`. Descompacte e abra `blackwall-dive.exe`.
+  - Para ter uma versão com link fixo, envie uma tag (`git tag v0.1.0` e `git push origin v0.1.0`). O Actions publica os zips na página de **Releases**.
 - **A partir do código:**
 
   ```bash
@@ -29,7 +30,8 @@ O jogo salva sozinho (depois de cada mergulho e de cada compra) em `%APPDATA%\Bl
 | **Tab** | mostra a build: as tags, os bônus e o ataque automático |
 | **Esc** | pausa |
 | **F11** | tela cheia |
-| **F2** | liga e desliga o som |
+| **F2** | liga e desliga os efeitos sonoros |
+| **F3** | liga e desliga a música |
 
 ## Como funciona
 
@@ -135,4 +137,9 @@ python tools/empacotar.py
 ## Créditos
 
 - Fontes: Rajdhani e IBM Plex Mono, ambas sob a SIL Open Font License (as licenças estão em `assets/fonts/`).
+- Trilha: os três loops do primeiro jogo, o projeto-netrunner (`assets/music/`). São composições originais, sintetizadas pelo `tools/make_music.py` daquele projeto:
+  - `desktop_loop.wav` toca no esconderijo;
+  - `malfunction_loop.wav`, nas ondas;
+  - `danger_loop.wav`, com chefe ou alvo na arena.
+- Efeitos sonoros: sintetizados na hora pelo jogo (`blackwall/game/audio.py`).
 - Cyberpunk 2077, Night City, Netwatch e os nomes dos quickhacks, cyberdecks e Black ICE pertencem à CD PROJEKT RED e à R. Talsorian Games. Este é um projeto de fã, sem fins comerciais.

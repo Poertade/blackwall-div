@@ -135,5 +135,25 @@ def test_a_mission_with_the_team_draws_and_plays(app):
     assert "download" in scene.objective_text().lower()
 
 
+def test_the_soundtrack_follows_the_scene(app):
+    frames(app, 3)
+    assert app.music.current == "desktop"
+    cfg = pf.dive_config(app.profile, app.content, "layer", 0, seed=3)
+    scene = DiveScene(app, cfg, "teste")
+    app.switch(scene)
+    frames(app, 60)
+    assert app.music.current == "net"
+    scene.dive.start_wave(10)
+    frames(app, 60)
+    assert app.music.current == "danger"
+
+
+def test_f3_mutes_only_the_music(app):
+    key(app, pygame.K_F3)
+    frames(app, 2)
+    assert app.music.volume == 0 and app.audio.volume > 0
+    assert app.profile.settings["music"] == 0
+
+
 def test_screen_is_the_logical_size(app):
     assert app.screen.get_size() == (T.W, T.H)

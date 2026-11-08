@@ -28,7 +28,8 @@ class Profile:
     stats: dict = field(default_factory=lambda: {"dives": 0, "kills": 0, "ed_total": 0, "flatlines": 0,
                                                   "victories": 0})
     last_seen: float = field(default_factory=time.time)
-    settings: dict = field(default_factory=lambda: {"volume": 0.7, "fullscreen": False, "shake": True})
+    settings: dict = field(default_factory=lambda: {"volume": 0.7, "music": 0.35, "fullscreen": False,
+                                                     "shake": True})
 
 
 def new_profile(content) -> Profile:

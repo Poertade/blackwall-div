@@ -14,6 +14,7 @@ from blackwall import content as content_mod
 from blackwall.game import gfx
 from blackwall.game import theme as T
 from blackwall.game.audio import Audio
+from blackwall.game.music import Music
 from blackwall.meta import save as save_mod
 from blackwall.meta import story
 
@@ -29,7 +30,7 @@ def make_icon() -> pygame.Surface:
 
 class App:
     def __init__(self, save_dir=None, windowed=True):
-        pygame.mixer.pre_init(22050, -16, 1, 512)
+        pygame.mixer.pre_init(22050, -16, 2, 512)
         pygame.init()
         T.reset_fonts()
         pygame.display.set_caption("Blackwall Dive")
@@ -53,6 +54,7 @@ class App:
             self.toggle_fullscreen()
         self.glow = gfx.Glow((T.W, T.H))
         self.audio = Audio(self.profile.settings.get("volume", 0.7))
+        self.music = Music(self.profile.settings.get("music", 0.35))
         self.clock = pygame.time.Clock()
         self.running = True
         self.time = 0.0
@@ -84,6 +86,10 @@ class App:
         except pygame.error:
             pass
 
+    def toggle_music(self):
+        self.music.volume = 0.0 if self.music.volume > 0 else 0.35
+        self.profile.settings["music"] = self.music.volume
+
     def toggle_sound(self):
         self.audio.volume = 0.0 if self.audio.volume > 0 else 0.7
         self.profile.settings["volume"] = self.audio.volume
@@ -98,11 +104,16 @@ class App:
                 if event.key == pygame.K_F11 or (event.key == pygame.K_RETURN and event.mod & pygame.KMOD_ALT):
                     self.toggle_fullscreen()
                     continue
+                if event.key == pygame.K_F3:
+                    self.toggle_music()
+                    continue
                 if event.key == pygame.K_F2:
                     self.toggle_sound()
                     continue
             self.scene.handle(event)
         self.scene.update(dt)
+        self.music.set_mood(getattr(self.scene, "mood", "desktop"))
+        self.music.update(dt)
         self.render()
 
     def render(self):
@@ -126,6 +137,7 @@ class App:
             self.frame(dt)
             if exit_after is not None and self.time >= exit_after:
                 self.quit()
+        self.music.stop()
         pygame.quit()
 
 

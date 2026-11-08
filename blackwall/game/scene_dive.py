@@ -47,6 +47,13 @@ class DiveScene:
         self.trail_t = 0.0
         pygame.mouse.set_visible(False)
 
+    @property
+    def mood(self):
+        """A trilha: a rede com defeito nas ondas; a perseguição com chefe ou alvo na arena."""
+        d = self.dive
+        boss_up = d.phase == "wave" and (d.boss is not None and not d.boss.dead or any(s.boss for s in d.spawns))
+        return "danger" if boss_up else "net"
+
     # --- entrada -------------------------------------------------------------
     def arena_mouse(self):
         mx, my = self.app.mouse()
@@ -642,7 +649,8 @@ class DiveScene:
                   col=T.RED, size=18, sub=f"perde {gfx.fmt(loss)} Ed")
         gfx.text(surf, "Segure o botão esquerdo para andar. Teclas 1-6 lançam os hacks no ICE sob o cursor.",
                  (T.W / 2, 450), 16, T.DIM, anchor="center")
-        gfx.text(surf, "TAB mostra a build. F11 alterna a tela cheia.", (T.W / 2, 474), 16, T.DIM, anchor="center")
+        gfx.text(surf, "TAB mostra a build. F11 alterna a tela cheia. F2 liga e desliga os efeitos, F3 a música.",
+                 (T.W / 2, 474), 16, T.DIM, anchor="center")
 
     def resume(self):
         self.paused = False

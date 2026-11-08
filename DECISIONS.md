@@ -109,3 +109,14 @@
   | Netwatch | 10 | 34 | 70 | 115 | 163 |
 
 - **O Giant ainda era a maior parede** (12 mortes seguidas): ficou com menos vida, uma carga mais avisada e menos invocações. Agora a parede maior é a IA renegada, o chefe final, como deve ser.
+
+### 2026-11-08: a trilha do primeiro jogo e a primeira versão
+- **O pedido:** criar o executável e usar a trilha do primeiro jogo (o projeto-netrunner).
+- **Os três loops vieram como estão** (`assets/music/`, composições originais daquele projeto), um por clima:
+  - o apartamento no esconderijo;
+  - a rede "com defeito" nas ondas;
+  - a perseguição quando há chefe ou alvo de caçada na arena.
+- **A troca entre eles** é em fade: meio segundo para sair, um para entrar.
+- **O mixer passou a estéreo**, para manter o estéreo das trilhas.
+- **F3** liga e desliga só a música; **F2** continua para os efeitos.
+- **O executável:** cada envio gera os zips do Windows e do Linux nos artefatos do Actions. Uma tag `v*` também publica os zips na página de Releases. A tag fica a cargo do usuário, porque publicar uma release é uma ação dele.

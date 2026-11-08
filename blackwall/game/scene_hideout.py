@@ -19,6 +19,8 @@ OBJECTIVES = {
 
 
 class HideoutScene:
+    mood = "desktop"     # a trilha do apartamento
+
     def __init__(self, app, last=None, tab="mergulho"):
         self.app = app
         self.c = app.content
