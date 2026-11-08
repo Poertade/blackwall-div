@@ -191,6 +191,7 @@ class Dive:
             self.wave_total = 0
             return
         t, acc, step, nxt = 0.0, 0.0, 0.25, None
+        arrival = self.bal["waves"]["arrival"]   # os mesmos ICE chegam nesta fração do tempo da onda
         while t < plan.duration:
             acc = min(acc + plan.budget * step, 18.0)
             nxt = nxt or self._pick_type()
@@ -198,7 +199,7 @@ class Dive:
             if acc >= d["cost"]:
                 count = self.rng.randint(*d["pack"])
                 acc -= d["cost"] * count
-                self.queue.append([t, nxt, count])
+                self.queue.append([t * arrival, nxt, count])
                 nxt = None
             t += step
         self.wave_total = sum(q[2] for q in self.queue)
@@ -210,7 +211,7 @@ class Dive:
     def reinforce_in(self) -> float:
         """Segundos até começarem os reforços (0 = já estão chegando)."""
         w = self.bal["waves"]
-        return max(0.0, self.plan.duration + w["reinforce_after"] - self.wave_time)
+        return max(0.0, self.plan.duration * w["arrival"] + w["reinforce_after"] - self.wave_time)
 
     def _release(self, type_id, count):
         x, y = self._far_point()
@@ -325,7 +326,7 @@ class Dive:
             return
         if not plan.pool:
             return
-        self.budget_acc = min(self.budget_acc + plan.budget * dt, 18.0)
+        self.budget_acc = min(self.budget_acc + plan.budget * dt / self.bal["waves"]["arrival"], 18.0)
         alive = len(self.enemies) + len(self.spawns)
         limit = self.bal["waves"]["max_alive"]
         if alive >= limit:

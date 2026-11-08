@@ -110,7 +110,7 @@ enemies:
     paralyze: 0.6
 
   netrunner:
-    name: Netrunner da Netwatch
+    name: Netrunner
     ai: hacker
     kind: netrunner
     hp: 48

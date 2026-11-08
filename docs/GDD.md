@@ -149,7 +149,7 @@ Os nomes vêm dos Black ICE clássicos do Cyberpunk:
 | **Sabertooth** | tanque, investe em linha reta |
 | **Asp** | deixa poças de veneno |
 | **Scorpion** | paralisa quem encosta |
-| **Netrunner da Netwatch** | um inimigo que hackeia você (rouba RAM, atrasa as recargas) |
+| **Netrunner** | um inimigo que hackeia você (rouba RAM, atrasa as recargas) |
 | Chefes | **Kraken** (tentáculos), **Liche** (se reconstrói), **Giant**, um **agente da Netwatch** e a **IA renegada** do outro lado da Blackwall |
 
 ## 9. Os três modos [decidido: todos]

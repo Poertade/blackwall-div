@@ -36,6 +36,8 @@ waves:
   budget_growth: 1.15       # a cada onda
   hp_growth: 0.16           # vida dos inimigos +16% a cada onda (dentro da camada)
   damage_growth: 0.05
+  enemy_damage: 2.0         # o dano de todos os ICE (encostar, tiros, poças, chefes) vezes 2 (3ª rodada de testes)
+  arrival: 0.5              # os ICE da onda chegam na metade do tempo (o dobro da velocidade)
   telegraph: 0.8            # o aviso antes de um inimigo aparecer
   spawn_min_distance: 260
   max_alive: 120

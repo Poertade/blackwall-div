@@ -482,7 +482,7 @@ def test_reinforcements_arrive_if_the_wave_drags(content):
     e = put(dive, "sabertooth", 100, 100)
     e.speed = 0
     dive.player.invulnerable = 1e9
-    run(dive, dive.plan.duration + content.balance["waves"]["reinforce_after"] - 1)
+    run(dive, dive.reinforce_in() - 1)
     assert len(dive.enemies) + len(dive.spawns) == 1
     run(dive, 2)
     assert dive.reinforcing and len(dive.enemies) + len(dive.spawns) > 1
@@ -510,3 +510,15 @@ def test_no_attack_hack_recharges_in_under_a_second(content):
         if h["kind"] != "movimento":
             assert h["cooldown"] >= 1.0, hid
             assert "recarga" in content.hack_trees[hid], hid
+
+
+def test_ice_arrive_in_half_the_wave_time_and_hit_twice_as_hard(content):
+    dive = Dive(content, DiveConfig(seed=4))
+    window = dive.plan.duration * content.balance["waves"]["arrival"]
+    assert dive.queue and max(q[0] for q in dive.queue) < window
+    assert content.balance["waves"]["enemy_damage"] == 2.0
+    assert dive.plan.damage == pytest.approx(content.layers[0]["damage"] * 2.0)
+
+
+def test_the_netwatch_netrunner_is_just_netrunner(content):
+    assert content.enemies["netrunner"]["name"] == "Netrunner"

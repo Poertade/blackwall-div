@@ -199,3 +199,9 @@
    - toda árvore de hack de ataque ganhou o nó **Recarga** na raiz, sempre visível (-8% por nível, até 5 níveis = -40%), no lugar dos nós de recarga espalhados (Condutor, Ping rápido, Dissipador, Reinício, Pane rápida, Reciclagem, Gatilho e as Recargas).
 
 **O ritmo (o robô, 2 carreiras por caminho):** a primeira camada sai em ~2,5 mergulhos (18 min). O jogo inteiro leva 2h20 no Solo e na Netwatch e 3h na Equipe.
+
+### 2026-11-08: a terceira rodada de testes
+- **A chegada dos ICE é mais rápida:** os mesmos ICE de cada onda chegam na metade do tempo (`arrival: 0.5`). Os reforços contam a partir daí, e os ICE que acompanham o chefe também vêm duas vezes mais rápido.
+- **O "Netrunner da Netwatch" virou só "Netrunner".**
+- **O dano de todos os ICE dobrou** (`enemy_damage: 2.0`): encostar, tiros, poças e ataques dos chefes. O roubo de RAM não mudou.
+- **Medido com o robô:** ele precisa de ~35 mergulhos (1h25) para vencer a primeira camada. Morre 22 vezes já na primeira onda, até a árvore permanente crescer. O jogo inteiro leva de 3h45 a 4h20, conforme o caminho.

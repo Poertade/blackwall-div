@@ -32,7 +32,7 @@ def plan(content, mode: str, layer: int, number: int, mission: dict | None = Non
         return WavePlan(
             number=number, in_layer=number, layer=layer_index, duration=duration, budget=budget,
             hp=data["hp"] * (1 + bal["hp_growth"] * (number - 1)),
-            damage=data["damage"] * (1 + bal["damage_growth"] * (number - 1)),
+            damage=data["damage"] * (1 + bal["damage_growth"] * (number - 1)) * bal["enemy_damage"],
             ed=data["ed"], boss=boss,
             pool={k: v for k, v in data["pool"].items() if v["from"] <= number + 1},
         )
@@ -64,7 +64,7 @@ def plan(content, mode: str, layer: int, number: int, mission: dict | None = Non
         duration=duration,
         budget=budget,
         hp=hp_mult * (1 + bal["hp_growth"] * (in_layer - 1)),
-        damage=dmg_mult * (1 + bal["damage_growth"] * (in_layer - 1)),
+        damage=dmg_mult * (1 + bal["damage_growth"] * (in_layer - 1)) * bal["enemy_damage"],
         ed=ed_mult,
         boss=boss,
         pool={k: v for k, v in data["pool"].items() if v["from"] <= in_layer},
