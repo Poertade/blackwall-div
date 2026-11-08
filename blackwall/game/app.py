@@ -15,6 +15,7 @@ from blackwall.game import gfx
 from blackwall.game import theme as T
 from blackwall.game.audio import Audio
 from blackwall.meta import save as save_mod
+from blackwall.meta import story
 
 
 def make_icon() -> pygame.Surface:
@@ -39,7 +40,6 @@ class App:
         self.save_dir = save_dir
         self.content = content_mod.load()
         self.profile = save_mod.load(self.content, save_dir)
-        from blackwall.meta import story
         self.offline_gain = story.offline_income(self.profile, self.content)
         # SCALED: a tela lógica é 1280x720 e o SDL escala para a janela (o mouse já vem na escala lógica)
         if os.environ.get("SDL_VIDEODRIVER") == "dummy":
@@ -57,7 +57,9 @@ class App:
         self.running = True
         self.time = 0.0
         from blackwall.game.scene_hideout import HideoutScene
-        self.scene = HideoutScene(self)
+        # com mensagem nova (a primeira fala da Rhyme, por exemplo), o jogo abre na aba HISTÓRIA
+        news = story.unread(self.profile, self.content) or story.needs_path_choice(self.profile)
+        self.scene = HideoutScene(self, tab="historia" if news else "mergulho")
 
     # --- utilidades para as telas --------------------------------------------
     def mouse(self):

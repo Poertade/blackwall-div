@@ -31,6 +31,10 @@ def click(app, pos, button=1):
     pygame.event.post(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=pos, button=button))
 
 
+def test_first_launch_opens_on_rhymes_message(app):
+    assert app.scene.tab == "historia"
+
+
 def test_every_hideout_tab_draws(app):
     for tab, _label in TABS:
         app.switch(HideoutScene(app, tab=tab))
