@@ -80,7 +80,7 @@ def bot_input(dive, t, rng):
     cast = ()
     aim = (p.x, p.y)
     for i, slot in enumerate(dive.slots):
-        if not slot.hack or slot.cooldown > 0:
+        if not slot.hack or slot.cooldown > 0 or dive.c.hacks[slot.hack]["kind"] == "movimento":
             continue
         target = choose_target(dive, slot.hack)
         if target is None:
@@ -95,7 +95,12 @@ def bot_input(dive, t, rng):
         cast = (i,)
         aim = (target.x + rng.uniform(-6, 6), target.y + rng.uniform(-6, 6))
         break
-    return DiveInput(move=move, aim=aim, cast=cast)
+    if cast:
+        return DiveInput(aim=aim, cast=cast)       # mira e lança (parada neste passo)
+    walk = dive.move_slot()
+    if move is None or walk is None:
+        return DiveInput(aim=aim)
+    return DiveInput(aim=move, held=(walk,))      # anda segurando o Andar
 
 
 def pick_up(dive):
@@ -136,7 +141,7 @@ PREFERENCE = ["contagion", "short_circuit", "overheat", "blackwall_gateway", "sy
 def arrange(profile, content):
     slots = content.decks[profile.deck]["slots"]
     owned = [h for h in PREFERENCE if h in profile.hacks]
-    profile.loadout = (owned + [None] * slots)[:slots]
+    profile.loadout = (["andar"] + owned + [None] * slots)[:slots]
 
 
 def spend(profile, content):
@@ -150,16 +155,25 @@ def spend(profile, content):
                 bought = True
                 break
         if not bought:
-            wanted = [h for h in PREFERENCE][:slots + 1]
+            wanted = [h for h in PREFERENCE][:slots]
             for hid in wanted:
                 if hid in shop["hacks"] and pf.buy_hack(profile, content, hid):
                     bought = True
                     break
         if not bought:
-            options = [(pf.tree_cost(content, n, pf.tree_level(profile, n)), n) for n in content.tree
+            options = [(pf.tree_cost(content, n, pf.tree_level(profile, n)), "tree", None, n) for n in content.tree
                        if pf.tree_status(profile, content, n)[0]]
+            for h in profile.loadout:
+                for n in content.hack_trees.get(h or "", {}):
+                    if pf.hack_node_status(profile, content, h, n)[0]:
+                        cost = pf.hack_node_cost(content, h, n, pf.hack_level(profile, h, n))
+                        options.append((cost, "hack", h, n))
             if options:
-                pf.buy_tree(profile, content, min(options)[1])
+                _cost, kind, h, n = min(options)
+                if kind == "tree":
+                    pf.buy_tree(profile, content, n)
+                else:
+                    pf.buy_hack_node(profile, content, h, n)
                 bought = True
         if not bought:
             return

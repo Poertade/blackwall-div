@@ -12,8 +12,8 @@ from blackwall.sim import build
 from blackwall.sim.dive import Dive, DiveInput
 
 STEP = 1 / 60
-KEYS = [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6]
-KEYPAD = [pygame.K_KP1, pygame.K_KP2, pygame.K_KP3, pygame.K_KP4, pygame.K_KP5, pygame.K_KP6]
+KEYS = [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6, pygame.K_7]
+KEYPAD = [pygame.K_KP1, pygame.K_KP2, pygame.K_KP3, pygame.K_KP4, pygame.K_KP5, pygame.K_KP6, pygame.K_KP7]
 RESULTS = {
     "failed": ("MISSÃO FALHOU", T.RED),
     "victory": ("CAMADA VENCIDA", T.YELLOW),
@@ -91,11 +91,31 @@ class DiveScene:
                 if self.clicks.click(self.app.logical(event.pos)):
                     self.app.audio.play("click")
             else:
+                # o botão esquerdo é o primeiro hack de movimento do deck (segurar anda, clicar dá o dash)
                 self.moving = True
+                slot = d.move_slot()
+                if slot is not None:
+                    self.queue.append(slot)
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             self.moving = False
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3 and d.phase == "wave" and not self.paused:
-            self.queue.append(0)
+            first = next((i for i, s in enumerate(d.slots)
+                          if s.hack and self.c.hacks[s.hack]["kind"] != "movimento"), None)
+            if first is not None:
+                self.queue.append(first)
+
+    def held_slots(self) -> tuple:
+        """Os slots segurados: as teclas apertadas e, com o botão esquerdo, o hack de movimento."""
+        held = []
+        pressed = pygame.key.get_pressed()
+        for i, (k, kp) in enumerate(zip(KEYS, KEYPAD)):
+            if i < len(self.dive.slots) and (pressed[k] or pressed[kp]):
+                held.append(i)
+        if self.moving:
+            slot = self.dive.move_slot()
+            if slot is not None and slot not in held:
+                held.append(slot)
+        return tuple(held)
 
     def pick(self, index):
         self.dive.choose(index)
@@ -139,7 +159,7 @@ class DiveScene:
         self.acc = min(self.acc + dt, 0.1)
         while self.acc >= STEP and d.phase == "wave":
             aim = self.arena_mouse()
-            inp = DiveInput(move=aim if self.moving else None, aim=aim, cast=tuple(self.queue))
+            inp = DiveInput(aim=aim, cast=tuple(self.queue), held=self.held_slots())
             self.queue.clear()
             d.step(STEP, inp)
             self.acc -= STEP
@@ -178,6 +198,10 @@ class DiveScene:
             pygame.draw.circle(surf, (255, 255, 255), (int(b.x + ox), int(b.y + oy)), max(1, int(b.radius) - 3))
         self.fx.draw_world(surf, glow, ox, oy)
         self.fx.draw_texts(surf, ox, oy)
+        if d.player.slowmo:
+            v = pygame.Surface((d.W, d.H), pygame.SRCALPHA)
+            v.fill((40, 255, 140, 22))
+            surf.blit(v, (ox, oy))
         if self.fx.hurt_flash > 0:
             v = pygame.Surface((T.W, T.H), pygame.SRCALPHA)
             a = int(110 * self.fx.hurt_flash / 0.35)
@@ -277,7 +301,13 @@ class DiveScene:
         d = self.dive
         p = d.player
         x, y = p.x + ox, p.y + oy
-        if p.invulnerable > 0 and int(self.t * 20) % 2 == 0:
+        if p.slowmo:
+            self.ghosts = (getattr(self, "ghosts", []) + [(p.x, p.y)])[-8:]
+            for i, (gx, gy) in enumerate(self.ghosts):
+                gfx.alpha_circle(surf, T.COLORS["green"], (gx + ox, gy + oy), d.stats.radius, 20 + i * 8)
+        elif getattr(self, "ghosts", None):
+            self.ghosts = []
+        if p.invulnerable > 0 and p.dash_t <= 0 and int(self.t * 20) % 2 == 0:
             return
         r = d.stats.radius
         col = T.CYAN
@@ -440,10 +470,15 @@ class DiveScene:
         else:
             wave = f"ONDA {d.plan.in_layer}/{self.c.balance['waves']['per_layer']}"
         gfx.text(surf, wave, (T.W / 2, 6), 30, T.TEXT, "title", anchor="midtop", glow=glow)
-        if d.plan.duration:
-            left = d.wave_left()
-            gfx.text(surf, f"{int(left) // 60}:{int(left) % 60:02d}", (T.W / 2, 38), 17,
-                     T.RED if left < 5 else T.DIM, "mono", anchor="midtop")
+        if not d.plan.boss:
+            left = d.reinforce_in()
+            text = f"ICE restantes: {d.remaining()}"
+            if d.reinforcing:
+                text += "   ·   REFORÇOS chegando"
+            elif left < 10:
+                text += f"   ·   reforços em {int(left) + 1}s"
+            gfx.text(surf, text, (T.W / 2, 38), 16, T.RED if d.reinforcing or left < 10 else T.DIM, "bold",
+                     anchor="midtop")
         elif d.boss and not d.boss.dead:
             b = d.boss
             w = 420
@@ -510,8 +545,10 @@ class DiveScene:
     def draw_slots(self, surf, glow, base_y):
         d = self.dive
         n = len(d.slots)
-        w, gap = 138, 8
+        gap = 8
         x0 = 420
+        w = min(138, int((T.W - 20 - x0 - gap * (n - 1)) / max(1, n)))
+        move = d.move_slot()
         h = T.H - base_y - 8
         mx, my = self.arena_mouse()
         target = d.target_at(mx, my)
@@ -534,14 +571,18 @@ class DiveScene:
                 pygame.draw.rect(surf, (4, 5, 8), (rect.x + 2, rect.y + 2, rect.w - 4, (rect.h - 4) * k))
             key = T.font(22, "title").render(str(i + 1), True, T.YELLOW if ready and afford else T.FAINT)
             surf.blit(key, (rect.x + 10, rect.y + 6))
-            gfx.text(surf, hd["name"], (rect.x + 32, rect.y + 9), 16 if len(hd["name"]) < 16 else 14,
-                     T.TEXT if ready and afford else T.DIM, "bold")
-            gfx.text(surf, f"{gfx.fmt_ram(cost)} RAM", (rect.x + 10, rect.bottom - 26), 14,
-                     T.CYAN if afford else T.RED, "mono")
+            name = hd["name"]
+            size = 16 if T.font(16, "bold").size(name)[0] < rect.w - 40 else 13
+            gfx.text(surf, name, (rect.x + 30, rect.y + 9), size, T.TEXT if ready and afford else T.DIM, "bold")
+            per_second = hd.get("mode") in ("walk", "sandevistan")
+            gfx.text(surf, f"{gfx.fmt_ram(cost)} RAM" + ("/s" if per_second else ""), (rect.x + 10, rect.bottom - 26),
+                     14, T.CYAN if afford else T.RED, "mono")
+            if i == move:
+                gfx.text(surf, "MOUSE", (rect.right - 8, rect.y + 36), 11, T.DIM, "bold", anchor="topright")
             if not ready:
                 gfx.text(surf, f"{slot.cooldown:.1f}s", (rect.right - 10, rect.bottom - 26), 14, T.DIM, "mono",
                          anchor="topright")
-            elif hd["kind"] == "supremo":
+            elif hd["kind"] == "supremo" and rect.w > 120:
                 gfx.text(surf, "SUPREMO", (rect.right - 10, rect.bottom - 26), 12, T.YELLOW, "bold",
                          anchor="topright")
             for u in d.uploads:
@@ -647,7 +688,7 @@ class DiveScene:
         loss = int(self.dive.ed * self.c.balance["flatline_ed_loss"])
         ui.button(surf, self.clicks, (T.W / 2 - 160, 350, 320, 56), "CORTAR A CONEXÃO", self.abort, mouse,
                   col=T.RED, size=18, sub=f"perde {gfx.fmt(loss)} Ed")
-        gfx.text(surf, "Segure o botão esquerdo para andar. Teclas 1-6 lançam os hacks no ICE sob o cursor.",
+        gfx.text(surf, "O botão esquerdo usa o hack de movimento. Teclas 1 a 7 lançam os hacks no ICE sob o cursor.",
                  (T.W / 2, 450), 16, T.DIM, anchor="center")
         gfx.text(surf, "TAB mostra a build. F11 alterna a tela cheia. F2 liga e desliga os efeitos, F3 a música.",
                  (T.W / 2, 474), 16, T.DIM, anchor="center")

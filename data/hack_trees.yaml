@@ -1,0 +1,157 @@
+# As árvores de cada quickhack: os efeitos especiais (saltos, alvos extras, envenenar ao queimar...),
+# comprados com Ed no esconderijo e válidos para todos os mergulhos. Só aparecem para os hacks que você tem.
+#
+# Cada nó: name, desc, max (níveis), cost (o 1º nível), growth (cada nível seguinte custa growth vezes o
+# anterior), requires (outro nó da mesma árvore, com pelo menos 1 nível), pos [coluna, linha] e effect:
+# o que cada nível soma, com as chaves dos ups (hacks: números do hack; flags: regras especiais).
+# Os nós com requires ficam ocultos até o nó anterior ser comprado.
+
+andar:
+  passo_leve: {name: Passo leve, desc: "-0,1 de RAM por segundo andando.", max: 3, cost: 80, growth: 1.8, pos: [0, 0],
+               effect: {hacks: {andar: {ram: -0.1}}}}
+  passada: {name: Passada larga, desc: "+10% de velocidade andando.", max: 3, cost: 100, growth: 1.8, pos: [1, 0],
+            effect: {hacks: {andar: {speed: 0.1}}}}
+
+kerenzikov:
+  alcance: {name: Alcance, desc: "+20% de distância no dash.", max: 3, cost: 150, growth: 1.8, pos: [0, 0],
+            effect: {hacks: {kerenzikov: {range: 0.2}}}}
+  reflexo: {name: Reflexo, desc: "Recarrega 15% mais rápido.", max: 2, cost: 200, growth: 2.0, pos: [1, 0],
+            effect: {hacks: {kerenzikov: {cooldown: 0.15}}}}
+  lamina: {name: Lâmina de dados, desc: "Quem estiver no caminho do dash toma dano.", max: 3, cost: 400, growth: 1.8,
+           requires: alcance, pos: [0, 1], effect: {hacks: {kerenzikov: {damage: 1}}}}
+
+teleporte:
+  alcance: {name: Alcance, desc: "+20% de distância do teleporte.", max: 3, cost: 200, growth: 1.8, pos: [0, 0],
+            effect: {hacks: {teleporte: {range: 0.2}}}}
+  recarga: {name: Recarga, desc: "Recarrega 15% mais rápido.", max: 2, cost: 250, growth: 2.0, pos: [1, 0],
+            effect: {hacks: {teleporte: {cooldown: 0.15}}}}
+  onda: {name: Onda de choque, desc: "A chegada pega +30 de raio e causa +50% de dano.", max: 3, cost: 450, growth: 1.8,
+         requires: alcance, pos: [0, 1], effect: {hacks: {teleporte: {radius: 30, damage: 0.5}}}}
+
+sandevistan:
+  eficiencia: {name: Eficiência, desc: "-0,4 de RAM por segundo.", max: 3, cost: 350, growth: 1.8, pos: [0, 0],
+               effect: {hacks: {sandevistan: {ram: -0.4}}}}
+  dilatacao: {name: Dilatação, desc: "O tempo em volta fica 5% mais lento.", max: 3, cost: 450, growth: 1.9, pos: [1, 0],
+              effect: {hacks: {sandevistan: {slow: 0.05}}}}
+  impulso: {name: Impulso, desc: "+10% de velocidade.", max: 2, cost: 500, growth: 2.0, requires: dilatacao, pos: [1, 1],
+            effect: {hacks: {sandevistan: {speed: 0.1}}}}
+
+short_circuit:
+  arco_extra: {name: Arco extra, desc: "Salta para +1 alvo.", max: 3, cost: 120, growth: 1.9, pos: [0, 0],
+               effect: {hacks: {short_circuit: {jumps: 1}}}}
+  sobretensao: {name: Sobretensão, desc: "+30% de dano.", max: 3, cost: 100, growth: 1.8, pos: [1, 0],
+                effect: {hacks: {short_circuit: {damage: 0.3}}}}
+  fagulha: {name: Fagulha, desc: "Quem toma choque pega fogo (vale para todos os choques).", max: 1, cost: 450,
+            requires: arco_extra, pos: [0, 1], effect: {flags: {fagulha: 1}}}
+  condutor: {name: Condutor, desc: "Recarrega 15% mais rápido.", max: 2, cost: 250, growth: 2.0, requires: sobretensao,
+             pos: [1, 1], effect: {hacks: {short_circuit: {cooldown: 0.15}}}}
+
+ping:
+  varredura: {name: Varredura, desc: "+60 de raio.", max: 3, cost: 100, growth: 1.8, pos: [0, 0],
+              effect: {hacks: {ping: {radius: 60}}}}
+  marca_longa: {name: Marca longa, desc: "As marcas duram +2 s.", max: 2, cost: 150, growth: 2.0, pos: [1, 0],
+                effect: {hacks: {ping: {duration: 2}}}}
+  ping_rapido: {name: Ping rápido, desc: "Recarrega 20% mais rápido.", max: 2, cost: 200, growth: 2.0,
+                requires: varredura, pos: [0, 1], effect: {hacks: {ping: {cooldown: 0.2}}}}
+
+overheat:
+  combustao: {name: Combustão, desc: "+30% de dano.", max: 3, cost: 140, growth: 1.8, pos: [0, 0],
+              effect: {hacks: {overheat: {damage: 0.3}}}}
+  brasa: {name: Brasa, desc: "A queimadura dura +1,5 s.", max: 3, cost: 140, growth: 1.8, pos: [1, 0],
+          effect: {hacks: {overheat: {duration: 1.5}}}}
+  paciente_zero: {name: Paciente zero, desc: "Overheat também envenena.", max: 1, cost: 500, requires: combustao,
+                  pos: [0, 1], effect: {flags: {paciente_zero: 1}}}
+
+contagion:
+  mutacao: {name: Mutação, desc: "Pula para +1 alvo.", max: 3, cost: 160, growth: 1.9, pos: [0, 0],
+            effect: {hacks: {contagion: {spread: 1}}}}
+  carga_viral: {name: Carga viral, desc: "-1 de RAM e recarrega 15% mais rápido.", max: 2, cost: 220, growth: 2.0,
+                pos: [1, 0], effect: {hacks: {contagion: {ram: -1, cooldown: 0.15}}}}
+  epidemia: {name: Epidemia, desc: "Quem morre envenenado contamina quem está em volta.", max: 1, cost: 600,
+             requires: mutacao, pos: [0, 1], effect: {flags: {epidemia: 1}}}
+  imunodeficiencia: {name: Imunodeficiência, desc: "Alvos envenenados tomam +15% de todo dano.", max: 2, cost: 500,
+                     growth: 2.0, requires: carga_viral, pos: [1, 1], effect: {flags: {imuno: 0.15}}}
+
+synapse_burnout:
+  sobrecarga_neural: {name: Sobrecarga neural, desc: "+30% de dano.", max: 3, cost: 200, growth: 1.8, pos: [0, 0],
+                      effect: {hacks: {synapse_burnout: {damage: 0.3}}}}
+  dissipador: {name: Dissipador, desc: "Recarrega 20% mais rápido.", max: 2, cost: 260, growth: 2.0, pos: [1, 0],
+               effect: {hacks: {synapse_burnout: {cooldown: 0.2}}}}
+  burnout: {name: Burnout, desc: "Até +30% de dano em tudo quanto menos vida o alvo tem.", max: 2, cost: 600,
+            growth: 2.0, requires: sobrecarga_neural, pos: [0, 1], effect: {flags: {execute: 0.3}}}
+
+cripple_movement:
+  paralisia: {name: Paralisia, desc: "Prende +1 s.", max: 3, cost: 140, growth: 1.8, pos: [0, 0],
+              effect: {hacks: {cripple_movement: {duration: 1}}}}
+  vulneravel: {name: Vulnerável, desc: "+15% de dano em quem está sob controle.", max: 2, cost: 300, growth: 2.0,
+               pos: [1, 0], effect: {flags: {vuln_control: 0.15}}}
+  execucao: {name: Execução, desc: "Hacks de controle desligam ICE comum abaixo de 20% de vida.", max: 1, cost: 700,
+             requires: paralisia, pos: [0, 1], effect: {flags: {execucao: 0.2}}}
+
+reboot_optics:
+  cegueira: {name: Cegueira, desc: "Cega todos num raio de 100.", max: 1, cost: 300, pos: [0, 0],
+             effect: {hacks: {reboot_optics: {radius: 100}}}}
+  apagao: {name: Apagão, desc: "A cegueira dura +1,5 s.", max: 2, cost: 200, growth: 2.0, pos: [1, 0],
+           effect: {hacks: {reboot_optics: {duration: 1.5}}}}
+  reinicio: {name: Reinício rápido, desc: "Recarrega 20% mais rápido.", max: 2, cost: 250, growth: 2.0,
+             requires: apagao, pos: [1, 1], effect: {hacks: {reboot_optics: {cooldown: 0.2}}}}
+
+sonic_shock:
+  eco: {name: Eco sônico, desc: "+30 de raio.", max: 2, cost: 250, growth: 2.0, pos: [0, 0],
+        effect: {hacks: {sonic_shock: {radius: 30}}}}
+  atordoamento: {name: Atordoamento, desc: "Atordoa +0,4 s.", max: 3, cost: 220, growth: 1.8, pos: [1, 0],
+                 effect: {hacks: {sonic_shock: {duration: 0.4}}}}
+  estrondo: {name: Estrondo, desc: "+50% de dano.", max: 2, cost: 300, growth: 2.0, requires: eco, pos: [0, 1],
+             effect: {hacks: {sonic_shock: {damage: 0.5}}}}
+
+weapon_glitch:
+  interferencia: {name: Interferência, desc: "+40 de raio.", max: 2, cost: 200, growth: 2.0, pos: [0, 0],
+                  effect: {hacks: {weapon_glitch: {radius: 40}}}}
+  pane_longa: {name: Pane prolongada, desc: "Dura +2 s.", max: 2, cost: 200, growth: 2.0, pos: [1, 0],
+               effect: {hacks: {weapon_glitch: {duration: 2}}}}
+  pane_rapida: {name: Pane rápida, desc: "Recarrega 20% mais rápido.", max: 2, cost: 250, growth: 2.0,
+                requires: interferencia, pos: [0, 1], effect: {hacks: {weapon_glitch: {cooldown: 0.2}}}}
+
+memory_wipe:
+  lavagem: {name: Lavagem, desc: "A confusão dura +2 s.", max: 3, cost: 300, growth: 1.8, pos: [0, 0],
+            effect: {hacks: {memory_wipe: {duration: 2}}}}
+  reciclagem: {name: Reciclagem, desc: "Recarrega 20% mais rápido.", max: 2, cost: 350, growth: 2.0,
+               requires: lavagem, pos: [0, 1], effect: {hacks: {memory_wipe: {cooldown: 0.2}}}}
+
+cyberpsychosis:
+  furia: {name: Fúria, desc: "O alvo causa +40% de dano nos outros.", max: 3, cost: 500, growth: 1.8, pos: [0, 0],
+          effect: {hacks: {cyberpsychosis: {damage: 0.4}}}}
+  surto: {name: Surto longo, desc: "Dura +2 s.", max: 2, cost: 500, growth: 2.0, pos: [1, 0],
+          effect: {hacks: {cyberpsychosis: {duration: 2}}}}
+  gatilho: {name: Gatilho, desc: "Recarrega 15% mais rápido.", max: 2, cost: 700, growth: 2.0, requires: surto,
+            pos: [1, 1], effect: {hacks: {cyberpsychosis: {cooldown: 0.15}}}}
+
+detonate_grenade:
+  carga_extra: {name: Carga extra, desc: "+30% de dano.", max: 3, cost: 450, growth: 1.8, pos: [0, 0],
+                effect: {hacks: {detonate_grenade: {damage: 0.3}}}}
+  raio: {name: Raio de explosão, desc: "+30 de raio.", max: 3, cost: 450, growth: 1.8, pos: [1, 0],
+         effect: {hacks: {detonate_grenade: {radius: 30}}}}
+  recarga: {name: Recarga, desc: "Recarrega 15% mais rápido.", max: 2, cost: 600, growth: 2.0, requires: carga_extra,
+            pos: [0, 1], effect: {hacks: {detonate_grenade: {cooldown: 0.15}}}}
+
+system_reset:
+  desligamento: {name: Desligamento rápido, desc: "Recarrega 15% mais rápido.", max: 3, cost: 600, growth: 1.8,
+                 pos: [0, 0], effect: {hacks: {system_reset: {cooldown: 0.15}}}}
+  reset_forte: {name: Reset forte, desc: "O chefe fica atordoado +1 s.", max: 2, cost: 700, growth: 2.0, pos: [1, 0],
+                effect: {hacks: {system_reset: {duration: 1}}}}
+
+blackwall_gateway:
+  mais_saltos: {name: Mais saltos, desc: "Salta para +2 alvos.", max: 3, cost: 800, growth: 1.8, pos: [0, 0],
+                effect: {hacks: {blackwall_gateway: {jumps: 2}}}}
+  furia: {name: Fúria da Blackwall, desc: "+30% de dano.", max: 3, cost: 800, growth: 1.8, pos: [1, 0],
+          effect: {hacks: {blackwall_gateway: {damage: 0.3}}}}
+  recarga: {name: Recarga, desc: "Recarrega 15% mais rápido.", max: 2, cost: 1000, growth: 2.0, requires: furia,
+            pos: [1, 1], effect: {hacks: {blackwall_gateway: {cooldown: 0.15}}}}
+
+system_collapse:
+  colapso_amplo: {name: Colapso amplo, desc: "+40 de raio.", max: 3, cost: 900, growth: 1.8, pos: [0, 0],
+                  effect: {hacks: {system_collapse: {radius: 40}}}}
+  estilhacos: {name: Estilhaços, desc: "+40% de dano em volta.", max: 3, cost: 900, growth: 1.8, pos: [1, 0],
+               effect: {hacks: {system_collapse: {damage: 0.4}}}}
+  recarga: {name: Recarga, desc: "Recarrega 15% mais rápido.", max: 2, cost: 1100, growth: 2.0,
+            requires: colapso_amplo, pos: [0, 1], effect: {hacks: {system_collapse: {cooldown: 0.15}}}}

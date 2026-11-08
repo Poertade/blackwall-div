@@ -10,7 +10,8 @@ from blackwall.sim.stats import FLAG_KEYS, HACK_KEYS, STAT_KEYS, TAGS
 
 AIS = {"chase", "swarm", "ranged", "charger", "dropper", "paralyzer", "hacker", "node"}
 BOSS_ATTACKS = {"radial", "volley", "spiral", "summon", "charge", "drain", "revive"}
-KINDS = {"combate", "controle", "furtivo", "supremo"}
+KINDS = {"combate", "controle", "furtivo", "supremo", "movimento"}
+MOVE_MODES = {"walk", "dash", "blink", "sandevistan"}
 RARITIES = {"comum", "raro", "epico"}
 COLORS = {"cyan", "red", "yellow", "violet", "green", "orange", "pink", "white", "blue"}
 PATHS = {"solo", "equipe", "netwatch"}
@@ -32,6 +33,7 @@ class Content:
     decks: dict
     tree: dict
     story: dict
+    hack_trees: dict
 
     def mission(self, mission_id: str) -> dict:
         for m in self.story["missions"]:
@@ -64,6 +66,7 @@ def load(data_dir: Path = DATA) -> Content:
         decks=_read(data_dir / "decks.yaml"),
         tree=_read(data_dir / "tree.yaml"),
         story=_read(data_dir / "story.yaml"),
+        hack_trees=_read(data_dir / "hack_trees.yaml"),
     )
     errors = validate(content)
     if errors:
@@ -75,9 +78,10 @@ def _check_mods(where: str, spec: dict, content: Content, errors: list):
     for key in spec.get("stats") or {}:
         if key not in STAT_KEYS:
             errors.append(f"{where}: stat desconhecido '{key}'")
-    for key in spec.get("tag_damage") or {}:
-        if key not in TAGS:
-            errors.append(f"{where}: tag desconhecida '{key}'")
+    for block in ("tag_damage", "tag_cooldown"):
+        for key in spec.get(block) or {}:
+            if key not in TAGS:
+                errors.append(f"{where}: tag desconhecida '{key}'")
     for hack, values in (spec.get("hacks") or {}).items():
         if hack not in content.hacks:
             errors.append(f"{where}: hack desconhecido '{hack}'")
@@ -151,6 +155,8 @@ def validate(c: Content) -> list:
             errors.append(f"hack {hid}: target '{h.get('target')}'")
         if h.get("color") not in COLORS:
             errors.append(f"hack {hid}: cor '{h.get('color')}'")
+        if h.get("kind") == "movimento" and h.get("mode") not in MOVE_MODES:
+            errors.append(f"hack {hid}: modo de movimento '{h.get('mode')}'")
         for tag in h.get("tags", []):
             if tag not in TAGS:
                 errors.append(f"hack {hid}: tag '{tag}'")
@@ -206,7 +212,7 @@ def validate(c: Content) -> list:
         if reward.get("hack") and reward["hack"] not in c.hacks:
             errors.append(f"{where}: recompensa '{reward['hack']}'")
     for did, d in c.decks.items():
-        if not 1 <= d.get("slots", 0) <= 6:
+        if not 1 <= d.get("slots", 0) <= 7:
             errors.append(f"deck {did}: slots {d.get('slots')}")
         if d.get("path") and d["path"] not in PATHS:
             errors.append(f"deck {did}: caminho '{d['path']}'")
@@ -216,6 +222,18 @@ def validate(c: Content) -> list:
         if n.get("requires") and n["requires"] not in c.tree:
             errors.append(f"árvore {nid}: requires '{n['requires']}'")
     _check_story(c, errors)
+    for hid, nodes in c.hack_trees.items():
+        if hid not in c.hacks:
+            errors.append(f"árvore do hack '{hid}': hack desconhecido")
+            continue
+        for nid, n in nodes.items():
+            where = f"árvore de {hid}, nó {nid}"
+            for key in ("name", "desc", "max", "cost", "pos", "effect"):
+                if key not in n:
+                    errors.append(f"{where}: falta '{key}'")
+            if n.get("requires") and n["requires"] not in nodes:
+                errors.append(f"{where}: requires '{n['requires']}'")
+            _check_mods(where, n.get("effect", {}), c, errors)
     starting = [h for h, d in c.hacks.items() if d.get("price") == 0]
     if len(starting) < 2:
         errors.append("é preciso pelo menos 2 hacks iniciais (price 0)")

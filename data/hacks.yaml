@@ -224,3 +224,69 @@ system_collapse:
   damage: 60              # quem está em volta toma este dano
   price: 1600
   desc: Destrói o alvo. Chefes perdem um bom pedaço da vida.
+
+# --- Movimento: andar também é um quickhack (ocupa um slot e gasta RAM) ------------------------
+# mode: walk (segurar: anda até o cursor; ram é por segundo andando), dash (clique: arrancada),
+# blink (clique: some e reaparece no cursor), sandevistan (segurar: anda com o tempo em volta lento).
+# O botão esquerdo usa o primeiro hack de movimento do deck; a tecla do slot também funciona.
+
+andar:
+  name: Andar
+  kind: movimento
+  mode: walk
+  tags: []
+  color: cyan
+  ram: 0.4                # por segundo andando
+  cooldown: 0
+  upload: 0
+  target: point
+  speed: 1.0
+  price: 0
+  desc: Segure para andar até o cursor. Gasta pouca RAM por segundo em movimento.
+
+kerenzikov:
+  name: Kerenzikov
+  kind: movimento
+  mode: dash
+  tags: []
+  color: yellow
+  ram: 2
+  cooldown: 1.0
+  upload: 0
+  target: point
+  distance: 190
+  time: 0.16
+  price: 350
+  desc: Uma arrancada curta na direção do cursor. Invulnerável durante o dash.
+
+teleporte:
+  name: Teleporte
+  kind: movimento
+  mode: blink
+  tags: []
+  color: violet
+  ram: 3
+  cooldown: 2.6
+  upload: 0
+  target: point
+  range: 330
+  radius: 90
+  push: 70
+  damage: 8
+  price: 600
+  desc: Some e reaparece no cursor. A chegada empurra os ICE em volta. Funciona mesmo paralisada.
+
+sandevistan:
+  name: Sandevistan
+  kind: movimento
+  mode: sandevistan
+  tags: []
+  color: green
+  ram: 2.5                # por segundo andando
+  cooldown: 0
+  upload: 0
+  target: point
+  speed: 1.15
+  slow: 0.65              # o mundo anda a 35% da velocidade enquanto você corre
+  price: 1100
+  desc: Segure para correr com o tempo lento em volta. Os ICE e os tiros quase param. Gasta RAM rápido.

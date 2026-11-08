@@ -9,9 +9,24 @@ def quiet_dive(content, loadout=("short_circuit", "ping"), mods=None, mode="laye
     if mods is not None:
         cfg.mods = mods
     dive = Dive(content, cfg)
-    dive.plan.pool = {}
-    dive.spawns.clear()
+    hush(dive)
     return dive
+
+
+def hush(dive):
+    """Nenhum ICE chega sozinho e a onda fica aberta até clear_wave (os testes põem os ICE à mão)."""
+    dive.plan.pool = {}
+    dive.spawns = [s for s in dive.spawns if s.boss or s.type == "node"]
+    dive.queue = [[1e9, "wisp", 1]]
+    dive.reinforcements = False
+
+
+def clear_wave(dive):
+    """Derruba o que falta da onda (sem Ed) e deixa o mergulho seguir para a escolha."""
+    dive.queue.clear()
+    dive.enemies.clear()
+    dive.spawns.clear()
+    dive.step(1 / 60)
 
 
 def put(dive, type_id, x, y, boss=False):

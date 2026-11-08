@@ -35,9 +35,9 @@ class DiveConfig:
 
 @dataclass
 class DiveInput:
-    move: tuple | None = None           # para onde andar (o botão esquerdo segurado)
-    aim: tuple = (0.0, 0.0)             # onde está o cursor
+    aim: tuple = (0.0, 0.0)             # onde está o cursor (o alvo dos hacks e o destino do movimento)
     cast: tuple = ()                    # os slots apertados neste passo
+    held: tuple = ()                    # os slots segurados (os hacks de movimento que andam enquanto seguram)
 
 
 class Dive:
@@ -85,6 +85,11 @@ class Dive:
         self.trail_from = (self.player.x, self.player.y)
         self.lifesteal_left = 0.0
         self.waves_cleared = 0
+        self.queue = []
+        self.wave_total = 0
+        self.reinforcements = True       # os testes desligam para controlar a arena
+        self.reinforce_t = 0.0
+        self.reinforcing = False
         # a missão da história
         self.mission = config.mission
         self.objective = (config.mission or {}).get("objective", {})
@@ -158,16 +163,62 @@ class Dive:
             x, y = self._far_point(min_distance=320)
             self.spawns.append(Spawn(x, y, self.plan.boss, 1.6, boss=True))
         if self.objective.get("type") == "nodes":
-            self.nodes_warned = False
             for _ in range(self.objective.get("per_wave", 2)):
                 x, y = self._far_point(min_distance=200)
                 self.spawns.append(Spawn(x, y, "node", 1.0))
+        self._plan_queue()
+        self.reinforce_t = 0.0
+        self.reinforcing = False
         self.emit("wave", number, self.plan.boss)
 
-    def wave_left(self) -> float:
-        if not self.plan.duration:
-            return 0.0
-        return max(0.0, self.plan.duration - self.wave_time)
+    def _pick_type(self):
+        pool = self.plan.pool
+        total = sum(v["weight"] for v in pool.values())
+        pick = self.rng.random() * total
+        for type_id, v in pool.items():
+            pick -= v["weight"]
+            if pick <= 0:
+                return type_id
+        return type_id
+
+    def _plan_queue(self):
+        """Sorteia, no começo da onda, todos os ICE dela: [segundo em que chegam, tipo, quantos].
+
+        O total é fixo: a onda acaba quando todos chegaram e caíram (o chefe tem o próprio fim)."""
+        plan = self.plan
+        self.queue = []
+        if plan.boss or not plan.pool:
+            self.wave_total = 0
+            return
+        t, acc, step, nxt = 0.0, 0.0, 0.25, None
+        while t < plan.duration:
+            acc = min(acc + plan.budget * step, 18.0)
+            nxt = nxt or self._pick_type()
+            d = self.c.enemies[nxt]
+            if acc >= d["cost"]:
+                count = self.rng.randint(*d["pack"])
+                acc -= d["cost"] * count
+                self.queue.append([t, nxt, count])
+                nxt = None
+            t += step
+        self.wave_total = sum(q[2] for q in self.queue)
+
+    def remaining(self) -> int:
+        """Quantos ICE ainda faltam derrubar nesta onda (os que vão chegar e os que estão na arena)."""
+        return sum(q[2] for q in self.queue) + len(self.enemies) + len(self.spawns)
+
+    def reinforce_in(self) -> float:
+        """Segundos até começarem os reforços (0 = já estão chegando)."""
+        w = self.bal["waves"]
+        return max(0.0, self.plan.duration + w["reinforce_after"] - self.wave_time)
+
+    def _release(self, type_id, count):
+        x, y = self._far_point()
+        telegraph = self.bal["waves"]["telegraph"]
+        for _ in range(count):
+            sx = min(self.W - 20, max(20, x + self.rng.uniform(-40, 40)))
+            sy = min(self.H - 20, max(20, y + self.rng.uniform(-40, 40)))
+            self.spawns.append(Spawn(sx, sy, type_id, telegraph))
 
     def _end_wave(self):
         for e in self.enemies:
@@ -249,15 +300,29 @@ class Dive:
 
     def _director(self, dt):
         plan = self.plan
-        if plan.duration and self.wave_time >= plan.duration:
-            if self.objective.get("type") == "nodes" and self.nodes_left():
-                if not self.nodes_warned:
-                    self.nodes_warned = True
-                    self.emit("objective", "DESTRUA OS NÓS")
-            else:
+        if not plan.boss:
+            limit = self.bal["waves"]["max_alive"]
+            while self.queue and self.queue[0][0] <= self.wave_time:
+                alive = len(self.enemies) + len(self.spawns)
+                if alive >= limit:
+                    break
+                _t, type_id, count = self.queue.pop(0)
+                self._release(type_id, min(count, limit - alive))
+            if not self.queue and not self.enemies and not self.spawns:
                 self._end_wave()
                 self._after_wave()
                 return
+            # demorou demais: chegam reforços até a onda acabar
+            if self.reinforcements and plan.pool and self.reinforce_in() <= 0:
+                if not self.reinforcing:
+                    self.reinforcing = True
+                    self.emit("objective", "REFORÇOS")
+                self.reinforce_t -= dt
+                if self.reinforce_t <= 0 and len(self.enemies) + len(self.spawns) < limit:
+                    self.reinforce_t = self.bal["waves"]["reinforce_every"]
+                    type_id = self._pick_type()
+                    self._release(type_id, self.rng.randint(*self.c.enemies[type_id]["pack"]))
+            return
         if not plan.pool:
             return
         self.budget_acc = min(self.budget_acc + plan.budget * dt, 18.0)
@@ -331,17 +396,16 @@ class Dive:
         p.invulnerable = max(0.0, p.invulnerable - dt)
         p.root_immune = max(0.0, p.root_immune - dt)
         p.moving = False
+        p.slowmo = False
         if p.rooted > 0:
             p.rooted -= dt
-        elif inp.move is not None:
-            dx, dy = inp.move[0] - p.x, inp.move[1] - p.y
-            d = math.hypot(dx, dy)
-            if d > 2:
-                step = min(d, st.speed * dt)
-                p.x += dx / d * step
-                p.y += dy / d * step
-                p.facing = math.atan2(dy, dx)
-                p.moving = True
+        if p.dash_t > 0:
+            p.dash_t -= dt
+            p.x += p.dash_v[0] * dt
+            p.y += p.dash_v[1] * dt
+            p.moving = True
+        elif p.rooted <= 0:
+            self._walk(inp, dt)
         r = st.radius
         p.x = min(self.W - r, max(r, p.x))
         p.y = min(self.H - r, max(r, p.y))
@@ -350,22 +414,24 @@ class Dive:
         for slot in inp.cast:
             self.cast(slot, inp.aim)
         self._update_uploads(dt)
-        self._update_spawns(dt)
-        self._director(dt)
+        # com o Sandevistan, o mundo anda devagar (a netrunner, os hacks e a RAM não)
+        wdt = dt * (1 - self._slowmo_factor()) if p.slowmo else dt
+        self._update_spawns(wdt)
+        self._director(wdt)
         if self.phase != "wave":
             return
         self._update_auto(dt)
-        self._update_objective(dt)
+        self._update_objective(wdt)
         self._update_allies(dt)
         if self.phase != "wave":
             return
         for e in self.enemies:
             if not e.dead:
-                self._update_enemy(e, dt)
+                self._update_enemy(e, wdt)
         self.enemies = [e for e in self.enemies if not e.dead]
         self._separate()
-        self._update_bullets(dt)
-        self._update_zones(dt)
+        self._update_bullets(wdt)
+        self._update_zones(wdt)
         self._update_pickups(dt)
         if p.hp <= 0 and self.phase == "wave":
             self.phase = "over"
@@ -388,9 +454,122 @@ class Dive:
     def slot_cost(self, index: int, target=None) -> float:
         hid = self.slots[index].hack
         h = self.c.hacks[hid]
+        if h.get("mode") in ("walk", "sandevistan"):
+            return self.move_cost(hid)
         if hid == "contagion" and self.stats.flag("free_contagion") and target is not None and target.has("poison"):
             return 0.0
         return self.stats.ram_cost(hid, h)
+
+    # --- o movimento (também é quickhack) ---------------------------------------
+    def move_slot(self) -> int | None:
+        """O primeiro hack de movimento do deck (o do botão esquerdo)."""
+        for i, s in enumerate(self.slots):
+            if s.hack and self.c.hacks[s.hack]["kind"] == "movimento":
+                return i
+        return None
+
+    def move_cost(self, hid) -> float:
+        """A RAM por segundo dos movimentos de segurar (Andar, Sandevistan)."""
+        h = self.c.hacks[hid]
+        cost = (h["ram"] + self.stats.hack_mod(hid, "ram")) * (1 - min(0.6, self.mods.stats["ram_cost_pct"]))
+        return max(0.05, cost)
+
+    def _slowmo_factor(self) -> float:
+        for s in self.slots:
+            if s.hack and self.c.hacks[s.hack].get("mode") == "sandevistan":
+                h = self.c.hacks[s.hack]
+                return min(0.85, h["slow"] + self.stats.hack_mod(s.hack, "slow"))
+        return 0.0
+
+    def _walk(self, inp, dt):
+        p = self.player
+        for index in inp.held:
+            if not 0 <= index < len(self.slots) or not self.slots[index].hack:
+                continue
+            hid = self.slots[index].hack
+            h = self.c.hacks[hid]
+            if h.get("mode") not in ("walk", "sandevistan"):
+                continue
+            dx, dy = inp.aim[0] - p.x, inp.aim[1] - p.y
+            d = math.hypot(dx, dy)
+            if d <= 2:
+                return
+            cost = self.move_cost(hid) * dt
+            if p.ram < cost:
+                self.emit("denied", index, "sem RAM")
+                return
+            p.ram -= cost
+            speed = self.stats.speed * h.get("speed", 1.0) * (1 + self.stats.hack_mod(hid, "speed"))
+            step = min(d, speed * dt)
+            p.x += dx / d * step
+            p.y += dy / d * step
+            p.facing = math.atan2(dy, dx)
+            p.moving = True
+            p.slowmo = h["mode"] == "sandevistan"
+            return
+
+    def _move_hack(self, index, hid, h, aim) -> bool:
+        """Os movimentos de clique: o Kerenzikov (arrancada) e o Teleporte."""
+        p = self.player
+        mode = h["mode"]
+        if mode in ("walk", "sandevistan"):
+            return False
+        if mode == "dash" and p.rooted > 0:
+            self.emit("denied", index, "paralisada")
+            return False
+        cost = self.stats.ram_cost(hid, h)
+        if p.ram + 1e-9 < cost:
+            self.emit("denied", index, "sem RAM")
+            return False
+        p.ram -= cost
+        slot = self.slots[index]
+        slot.total = self.stats.cooldown_of(hid, h)
+        slot.cooldown = slot.total
+        dx, dy = aim[0] - p.x, aim[1] - p.y
+        d = math.hypot(dx, dy) or 1.0
+        if mode == "dash":
+            distance = h["distance"] * (1 + self.stats.hack_mod(hid, "range"))
+            speed = distance / h["time"]
+            p.dash_v = (dx / d * speed, dy / d * speed)
+            p.dash_t = h["time"]
+            p.invulnerable = max(p.invulnerable, h["time"] + 0.08)
+            p.facing = math.atan2(dy, dx)
+            if self.stats.hack_mod(hid, "damage"):
+                self._dash_strike(hid, h, aim)
+            self.emit("dash", p.x, p.y, p.x + dx / d * distance, p.y + dy / d * distance)
+        else:
+            reach = h["range"] * (1 + self.stats.hack_mod(hid, "range"))
+            step = min(d, reach)
+            x0, y0 = p.x, p.y
+            r = self.stats.radius
+            p.x = min(self.W - r, max(r, p.x + dx / d * step))
+            p.y = min(self.H - r, max(r, p.y + dy / d * step))
+            p.rooted = 0.0
+            radius = h["radius"] + self.stats.hack_mod(hid, "radius")
+            dmg = h["damage"] * (1 + self.stats.hack_mod(hid, "damage")) * self.stats.damage_mult(None, ())
+            for e in self.enemies_near(p.x, p.y, radius):
+                ex, ey = e.x - p.x, e.y - p.y
+                ed = math.hypot(ex, ey) or 1.0
+                if not e.boss:
+                    e.x = min(self.W - e.radius, max(e.radius, e.x + ex / ed * h["push"]))
+                    e.y = min(self.H - e.radius, max(e.radius, e.y + ey / ed * h["push"]))
+                self.hurt(e, dmg, hid, (), can_crit=False, color="violet")
+            self.emit("blink", x0, y0, p.x, p.y, radius)
+        self.emit("cast", index, hid, False)
+        return True
+
+    def _dash_strike(self, hid, h, aim):
+        """Árvore do Kerenzikov: quem estiver no caminho da arrancada toma dano."""
+        p = self.player
+        dx, dy = p.dash_v
+        length = math.hypot(dx, dy) * h["time"] or 1.0
+        ux, uy = dx / (length / h["time"]), dy / (length / h["time"])
+        dmg = 20 * self.stats.hack_mod(hid, "damage") * self.stats.damage_mult(None, ())
+        for e in self.enemies:
+            ex, ey = e.x - p.x, e.y - p.y
+            along = ex * ux + ey * uy
+            if 0 <= along <= length and abs(ex * uy - ey * ux) <= e.radius + 18:
+                self.hurt(e, dmg, hid, (), color="yellow")
 
     def cast(self, index: int, aim) -> bool:
         if not 0 <= index < len(self.slots) or not self.slots[index].hack:
@@ -398,6 +577,11 @@ class Dive:
         slot = self.slots[index]
         hid = slot.hack
         h = self.c.hacks[hid]
+        if h["kind"] == "movimento":
+            if slot.cooldown > 0 and h["mode"] in ("dash", "blink"):
+                self.emit("denied", index, "recarga")
+                return False
+            return self._move_hack(index, hid, h, aim)
         if slot.cooldown > 0:
             self.emit("denied", index, "recarga")
             return False
@@ -1108,12 +1292,19 @@ class Dive:
         self.mission_time += dt
         node = self.node
         if node is not None and node.moving:
-            node.x = min(self.W - 70, node.x + node.speed * dt)
+            # o programa anda conforme a missão avança (as ondas vencidas e os ICE derrubados)
+            target = 70 + (self.W - 140) * self.mission_progress()
+            step = 60 * dt
+            node.x += max(-step, min(step, target - node.x))
 
     def mission_progress(self) -> float:
-        if not self.mission_total:
+        """Quanto da missão já foi: as ondas vencidas mais a parte derrubada da onda atual."""
+        if not self.mission:
             return 0.0
-        return min(1.0, self.mission_time / self.mission_total)
+        frac = 0.0
+        if self.phase == "wave" and self.wave_total:
+            frac = 1 - min(1.0, self.remaining() / self.wave_total)
+        return min(1.0, (self.waves_cleared + frac) / self.mission["waves"])
 
     def _node_down(self):
         self.emit("node_down")

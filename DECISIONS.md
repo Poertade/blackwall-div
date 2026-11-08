@@ -120,3 +120,55 @@
 - **O mixer passou a estéreo**, para manter o estéreo das trilhas.
 - **F3** liga e desliga só a música; **F2** continua para os efeitos.
 - **O executável:** cada envio gera os zips do Windows e do Linux nos artefatos do Actions. Uma tag `v*` também publica os zips na página de Releases. A tag fica a cargo do usuário, porque publicar uma release é uma ação dele.
+
+### 2026-11-08: a primeira rodada de testes do usuário
+**O que o usuário pediu, depois de jogar o .exe:**
+1. tela cheia sem pixelizar;
+2. os efeitos de ataque pararam do nada e voltaram;
+3. os ups do mergulho só com números (Integridade, dano, recarga);
+4. os efeitos especiais (saltos, alvos extras) numa árvore própria de cada hack;
+5. os nós bloqueados da árvore ocultos;
+6. a HISTÓRIA parecida com o celular (o Mensageiro) do primeiro jogo;
+7. as ondas acabando só quando todos os ICE caem;
+8. o movimento como hack, com variações e custo de RAM.
+
+**Perguntas e respostas:**
+- O movimento ocupa um slot do deck, e todos os decks ganharam um slot a mais.
+- As variações são as quatro: Andar, Kerenzikov, Teleporte e Sandevistan.
+- A árvore de cada hack é permanente, comprada com Ed.
+- Cada onda tem quantidade fixa de ICE, com reforços se demorar.
+
+**O que mudou:**
+- **A tela cheia:** o SDL escala a tela lógica com filtro linear (`SDL_RENDER_SCALE_QUALITY`), sem pixelizar.
+- **Os efeitos que sumiam eram o som.** O mixer tinha 8 canais, e numa onda cheia todos ficavam ocupados até os sons longos acabarem. Agora são 32 canais, e os sons importantes (lançar, levar dano, onda, chefe) tomam o canal do som mais velho.
+- **O "ª" (e o "º") não existem na fonte Rajdhani** e apareciam como um quadrado ("1□ camada"). Os textos usam "primeira" e "quinto".
+- **O movimento:**
+  - O botão esquerdo usa o primeiro hack de movimento do deck; a tecla do slot também funciona.
+  - Andar e Sandevistan gastam RAM por segundo enquanto você se move; sem RAM, a netrunner para.
+  - O Kerenzikov e o Teleporte gastam RAM por uso e têm recarga.
+  - O Sandevistan desacelera o mundo inteiro (ICE, tiros, chegada das ondas), mas não a netrunner nem a RAM.
+  - Os saves antigos ganham o Andar no slot 1.
+- **Os ups:**
+  - São 28, só números, com tag. Entraram `tag_cooldown` (a recarga mais rápida só dos hacks de uma tag) e os ups de dano por tag.
+  - Os bônus de conjunto (2/4/6) e o ataque automático de cada build ficaram.
+- **As árvores dos hacks** (`data/hack_trees.yaml`):
+  - têm 56 nós, de 2 a 4 por hack, inclusive os de movimento;
+  - receberam os efeitos especiais que eram ups: Arco extra, Mutação, Epidemia, Paciente zero, Fagulha, Execução, Cegueira, Eco sônico, Burnout, Imunodeficiência, Vulnerável;
+  - o Overclock saiu.
+- **A aba ÁRVORE:** escolhe a árvore numa coluna à esquerda (Netrunner ou um hack). Mostra o nível com número e barra contínua, porque os 40 tracinhos ficavam ilegíveis. Os nós cujo nó de cima ainda não foi comprado ficam ocultos, com uma linha dizendo quantos faltam revelar.
+- **As ondas:**
+  - O começo de cada onda sorteia a lista inteira de ICE: o orçamento de antes, distribuído pelo tempo de chegada.
+  - A onda acaba quando todos chegaram e caíram.
+  - Passados 20 s depois do tempo de chegada, vem um reforço a cada 7 s.
+  - O chefe continua acabando a onda dele.
+  - O download e a escolta andam conforme as ondas vencidas e os ICE derrubados.
+- **A HISTÓRIA virou o Mensageiro:**
+  - à esquerda, os contatos: avatar quadrado com a inicial, prévia e não lidas;
+  - à direita, os balões, um por linha da fala;
+  - as missões chegam como "SERVIÇO" na conversa de quem passa o trabalho;
+  - embaixo, as respostas numeradas, como no primeiro jogo: a escolha do caminho com dois cliques e o "ACEITAR SERVIÇO";
+  - a equipe tem a própria conversa, com o treino de cada membro.
+- **O ritmo:**
+  - Com todo ICE precisando cair, o orçamento das ondas caiu de 1,3 para 0,6 por segundo.
+  - A RAM de volta subiu de 1,8 para 2,2, porque andar também gasta.
+  - O robô (2 carreiras por caminho) vence a primeira camada em ~2 mergulhos e o jogo em 1h45 (Solo e Netwatch) a 2h40 (Equipe; o robô não treina a equipe nem fica parado ganhando a renda).

@@ -128,6 +128,16 @@ class FX:
                 self.banner = ("ELE ESTÁ SE RECONSTRUINDO", T.COLORS["green"], 2.0, 2.0)
             elif kind == "lone_wolf":
                 self.banner = (f"LOBO SOLITÁRIO +{int(ev[1] * 100)}%", T.YELLOW, 1.5, 1.5)
+            elif kind == "dash":
+                _, x0, y0, x1, y1 = ev
+                self.bolts.append([x0, y0, x1, y1, T.YELLOW, 0.18])
+                name = "zap"
+            elif kind == "blink":
+                _, x0, y0, x1, y1, radius = ev
+                self.rings.append([x0, y0, 30, 4, 0.3, 0.3, T.COLORS["violet"]])
+                self.rings.append([x1, y1, 10, radius, 0.35, 0.35, T.COLORS["violet"]])
+                self._burst(x1, y1, T.COLORS["violet"], 16, 220)
+                name = "blast"
             elif kind == "ally_heal":
                 _, x0, y0, x1, y1, col = ev
                 self.arcs.append([[(x0, y0), (x1, y1)], T.color(col), 0.2])

@@ -60,11 +60,13 @@ def test_a_dive_plays_offers_ups_and_returns_to_the_hideout(app):
         if scene.dive.enemies:
             target = scene.dive.enemies[0]
             pygame.mouse.set_pos((int(target.x + scene.ox), int(target.y + scene.oy)))
-            key(app, pygame.K_1)
+            key(app, pygame.K_2)      # o slot 1 é o Andar; o 2 é o Short Circuit
         frames(app, 1)
     assert scene.dive.casts > 0
     # pula para o fim da onda e escolhe um up com a tecla
-    scene.dive.wave_time = scene.dive.plan.duration
+    scene.dive.queue.clear()
+    scene.dive.enemies.clear()
+    scene.dive.spawns.clear()
     frames(app, 2)
     assert scene.dive.phase == "choice"
     key(app, pygame.K_1)
@@ -105,22 +107,29 @@ def test_quitting_mid_dive_counts_as_cut_connection_and_saves(app, tmp_path):
     assert app.profile.ed == 30
 
 
-def test_choosing_a_path_takes_two_clicks(app):
+def test_choosing_a_path_is_a_reply_to_rhyme_and_takes_two_presses(app):
     from blackwall.meta import story
     app.profile.layers_cleared = 1
     app.switch(HideoutScene(app, tab="historia"))
     frames(app, 2)
     scene = app.scene
-    buttons = [item for item in scene.clicks.items if item[0].w == 164]
-    assert len(buttons) == 3          # um botão por caminho
-    equipe = buttons[1][0].center
-    click(app, equipe)
+    assert scene.channel == "rhyme"
+    key(app, pygame.K_2)
     frames(app, 2)
     assert app.profile.path is None and scene.armed == "equipe"
-    click(app, equipe)
+    key(app, pygame.K_2)
     frames(app, 2)
     assert app.profile.path == "equipe"
     assert story.quest(app.profile)["team"] == {"juno": 1}
+    # depois da escolha, a Juno manda o primeiro serviço e a equipe aparece na lista
+    frames(app, 2)
+    ids = [c[0] for c in scene.channels()]
+    assert "juno" in ids and "_team" in ids
+    scene.open_channel("juno")
+    frames(app, 2)
+    key(app, pygame.K_1)          # ACEITAR SERVIÇO
+    frames(app, 2)
+    assert isinstance(app.scene, DiveScene) and app.scene.dive.mission["id"] == "equipe_1"
 
 
 def test_a_mission_with_the_team_draws_and_plays(app):

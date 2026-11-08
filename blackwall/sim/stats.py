@@ -5,6 +5,7 @@ do mesmo jeito, com quatro chaves:
 
     stats:      {hp: 25, damage: 0.1, ...}       (veja STAT_KEYS)
     tag_damage: {sobrecarga: 0.4}                 (+dano dos hacks com essa tag)
+    tag_cooldown: {cadeia: 0.15}                  (recarga mais rápida dos hacks com essa tag)
     hacks:      {short_circuit: {jumps: 1}}       (veja HACK_KEYS)
     flags:      {epidemia: 1}                     (regras especiais; veja FLAG_KEYS)
 
@@ -41,7 +42,7 @@ STAT_KEYS = {
     "damage_ai": "+% de dano em IAs e netrunners",
 }
 
-HACK_KEYS = {"damage", "ram", "cooldown", "duration", "radius", "jumps", "spread"}
+HACK_KEYS = {"damage", "ram", "cooldown", "duration", "radius", "jumps", "spread", "speed", "range", "slow"}
 
 FLAG_KEYS = {
     "imuno": "alvos envenenados tomam +X de dano",
@@ -73,6 +74,7 @@ class Mods:
     def __init__(self):
         self.stats = defaultdict(float)
         self.tag_damage = defaultdict(float)
+        self.tag_cooldown = defaultdict(float)
         self.hacks = defaultdict(lambda: defaultdict(float))
         self.flags = defaultdict(float)
 
@@ -83,6 +85,8 @@ class Mods:
             self.stats[key] += value * times
         for key, value in (spec.get("tag_damage") or {}).items():
             self.tag_damage[key] += value * times
+        for key, value in (spec.get("tag_cooldown") or {}).items():
+            self.tag_cooldown[key] += value * times
         for hack, values in (spec.get("hacks") or {}).items():
             for key, value in values.items():
                 self.hacks[hack][key] += value * times
@@ -95,6 +99,8 @@ class Mods:
             self.stats[key] += value
         for key, value in other.tag_damage.items():
             self.tag_damage[key] += value
+        for key, value in other.tag_cooldown.items():
+            self.tag_cooldown[key] += value
         for hack, values in other.hacks.items():
             for key, value in values.items():
                 self.hacks[hack][key] += value
@@ -163,7 +169,8 @@ class Stats:
         return round(cost, 1)
 
     def cooldown_of(self, hack_id: str, hack: dict) -> float:
-        reduction = min(self.limits["cooldown"], self.cooldown + self.hack_mod(hack_id, "cooldown"))
+        tags = sum(self.mods.tag_cooldown.get(t, 0.0) for t in hack.get("tags", []))
+        reduction = min(self.limits["cooldown"], self.cooldown + self.hack_mod(hack_id, "cooldown") + tags)
         return hack["cooldown"] * (1 - reduction)
 
     def upload_of(self, hack_id: str, hack: dict) -> float:

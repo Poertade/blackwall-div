@@ -3,7 +3,7 @@ import pytest
 from blackwall.meta import profile as pf
 from blackwall.meta import story
 from blackwall.sim.dive import Dive
-from helpers import put, run
+from helpers import clear_wave, hush, put, run
 
 
 def cleared(content, layers=1):
@@ -46,7 +46,7 @@ def test_no_path_before_layer_one(content):
 def test_netwatch_gets_the_netdriver_and_varga(content):
     p = cleared(content)
     pf.choose_path(p, content, "netwatch")
-    assert p.deck == "netdriver" and len(p.loadout) == 6
+    assert p.deck == "netdriver" and len(p.loadout) == 7
     assert story.allies_for_dive(p, content) == [("varga", 1)]
 
 
@@ -76,13 +76,13 @@ def test_survive_mission_wins_after_its_waves(content):
     p = cleared(content)
     pf.choose_path(p, content, "solo")
     dive = mission_dive(content, p, "solo_1")
-    dive.plan.pool = {}
+    hush(dive)
     waves = content.mission("solo_1")["waves"]
     for _ in range(waves):
-        run(dive, dive.plan.duration + 0.1)
+        clear_wave(dive)
         if dive.phase == "choice":
             dive.choose(0)
-            dive.plan.pool = {}
+            hush(dive)
     assert dive.phase == "over" and dive.result == "victory"
     summary = pf.apply_result(p, content, dive)
     assert summary["reward_hack"] == "detonate_grenade"
@@ -96,7 +96,7 @@ def test_download_fails_if_the_node_falls_and_keeps_the_ed(content):
     p = cleared(content)
     pf.choose_path(p, content, "equipe")
     dive = mission_dive(content, p, "equipe_1")
-    dive.plan.pool = {}
+    hush(dive)
     dive.allies.clear()
     node = dive.node
     assert node is not None and node.hp == content.mission("equipe_1")["objective"]["hp"]
@@ -112,7 +112,7 @@ def test_ice_goes_after_the_node_when_it_is_closer(content):
     p = cleared(content)
     pf.choose_path(p, content, "equipe")
     dive = mission_dive(content, p, "equipe_1")
-    dive.plan.pool = {}
+    hush(dive)
     dive.allies.clear()
     node = dive.node
     e = put(dive, "hellhound", node.x - 200, node.y - 10)
@@ -126,7 +126,7 @@ def test_escort_program_crosses_the_arena(content):
     pf.choose_path(p, content, "equipe")
     dive = mission_dive(content, p, "equipe_2")
     x0 = dive.node.x
-    dive.plan.pool = {}
+    hush(dive)
     run(dive, 10)
     assert dive.node.x > x0 + 50
 
@@ -135,7 +135,7 @@ def test_nodes_mission_holds_the_wave_until_the_nodes_fall(content):
     p = cleared(content)
     pf.choose_path(p, content, "netwatch")
     dive = mission_dive(content, p, "netwatch_1")
-    dive.plan.pool = {}
+    hush(dive)
     dive.allies.clear()
     run(dive, 1.2)
     nodes = [e for e in dive.enemies if e.type == "node"]
@@ -143,10 +143,12 @@ def test_nodes_mission_holds_the_wave_until_the_nodes_fall(content):
     for e in nodes:
         e.hp = e.max_hp = 1e9
     dive.player.invulnerable = 1e9   # os Wisps que os nós soltam não podem derrubar a netrunner no teste
-    run(dive, dive.plan.duration + 1)
-    assert dive.phase == "wave"
-    for e in nodes:
+    dive.queue.clear()
+    run(dive, 3)
+    assert dive.phase == "wave"      # os nós ainda estão de pé
+    for e in dive.enemies:
         dive.kill(e)
+    dive.spawns.clear()
     run(dive, 0.2)
     assert dive.phase == "choice"
 
@@ -158,7 +160,7 @@ def test_hunt_target_appears_in_the_last_wave(content):
     dive.allies.clear()
     last = content.mission("netwatch_2")["waves"]
     dive.start_wave(last)
-    dive.plan.pool = {}
+    hush(dive)
     run(dive, 2.0)
     assert dive.boss is not None and dive.boss.type == "severin"
     dive.kill(dive.boss)
@@ -170,7 +172,7 @@ def test_juno_hacks_on_her_own(content):
     p = cleared(content)
     pf.choose_path(p, content, "equipe")
     dive = mission_dive(content, p, "equipe_1")
-    dive.plan.pool = {}
+    hush(dive)
     dive.node.hp = 1e9
     e = put(dive, "sabertooth", dive.player.x + 120, dive.player.y)
     e.speed = 0
@@ -183,7 +185,7 @@ def test_mira_heals(content):
     pf.choose_path(p, content, "equipe")
     story.quest(p)["team"]["mira"] = 1
     dive = Dive(content, pf.dive_config(p, content, seed=1))
-    dive.plan.pool = {}
+    hush(dive)
     dive.player.hp = 20
     run(dive, 4.5)
     assert dive.player.hp > 20

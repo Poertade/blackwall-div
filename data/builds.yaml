@@ -33,7 +33,7 @@ sobrecarga:
   bonuses:
     2: {tag_damage: {sobrecarga: 0.25}, desc: Hacks de Sobrecarga +25% de dano.}
     4: {flags: {crit_stun: 0.6}, desc: Os críticos atordoam.}
-    6: {flags: {fifth_triple: 1}, desc: Cada 5º hack causa o triplo do dano.}
+    6: {flags: {fifth_triple: 1}, desc: Cada quinto hack causa o triplo do dano.}
 
 cadeia:
   short: Cadeia

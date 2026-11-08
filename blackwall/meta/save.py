@@ -30,10 +30,24 @@ def from_dict(content, data: dict) -> Profile:
     profile.decks = [d for d in profile.decks if d in content.decks] or [new_profile(content).deck]
     if profile.deck not in profile.decks:
         profile.deck = profile.decks[0]
+    # salvamentos antigos: os hacks iniciais novos (o Andar) entram, e o movimento vai para o slot 1
+    for h, d in content.hacks.items():
+        if d["price"] == 0 and h not in profile.hacks:
+            profile.hacks.append(h)
     slots = content.decks[profile.deck]["slots"]
     loadout = [h if h in profile.hacks else None for h in profile.loadout]
-    profile.loadout = (loadout + [None] * slots)[:slots]
+    loadout = (loadout + [None] * slots)[:slots]
+    if not any(h and content.hacks[h]["kind"] == "movimento" for h in loadout):
+        walk = next(h for h, d in content.hacks.items() if d["price"] == 0 and d["kind"] == "movimento")
+        if None in loadout:
+            loadout.remove(None)
+        else:
+            loadout.pop()
+        loadout.insert(0, walk)
+    profile.loadout = loadout
     profile.tree = {k: int(v) for k, v in profile.tree.items() if k in content.tree}
+    profile.hack_trees = {h: {n: int(lv) for n, lv in nodes.items() if n in content.hack_trees.get(h, {})}
+                          for h, nodes in (profile.hack_trees or {}).items() if h in content.hack_trees}
     defaults = Profile()
     for key, value in defaults.stats.items():
         profile.stats.setdefault(key, value)

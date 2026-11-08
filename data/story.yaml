@@ -261,7 +261,7 @@ paths:
     name: Netwatch
     color: blue
     who: halloran
-    desc: O Agente Varga mergulha com você, o Netdriver MK.5 de 6 slots e um salário por hora. +12% de dano.
+    desc: O Agente Varga mergulha com você, o Netdriver MK.5 de 7 slots e um salário por hora. +12% de dano.
 
 endings:
   solo:

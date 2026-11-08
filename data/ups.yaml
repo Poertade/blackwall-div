@@ -1,34 +1,17 @@
-# Os ups: as melhorias que você escolhe entre uma onda e outra (1 de 3).
+# Os ups: as melhorias que você escolhe entre uma onda e outra (1 de 3). Só números (Integridade,
+# dano, recarga, RAM...). Os efeitos especiais (saltos, alvos extras, envenenar ao queimar) ficam nas
+# árvores de cada hack, no esconderijo (data/hack_trees.yaml).
 #
 # tags: a build que o up puxa (contagio, sobrecarga, cadeia, controle; sem tag = serve a todas).
+#   Um up de build só aparece se algum hack do deck tiver essa tag.
 # rarity: comum, raro ou epico. max: quantas vezes dá para pegar.
-# requires_hack: só aparece se esse hack estiver no deck.
 #
 # O que um up pode mudar:
-#   stats:      números da netrunner (veja blackwall/sim/stats.py)
-#   tag_damage: +dano dos hacks de uma tag
-#   hacks:      números de um hack (damage: +%, ram: +RAM, cooldown: % mais rápido,
-#               duration: +segundos, radius: +raio, jumps: +saltos, spread: +alvos)
-#   flags:      regras especiais (veja blackwall/sim/dive.py)
+#   stats:        números da netrunner (veja blackwall/sim/stats.py)
+#   tag_damage:   +dano dos hacks de uma tag
+#   tag_cooldown: recarga mais rápida dos hacks de uma tag
 
-# --- Contágio: espalhar o dano -------------------------------------------------
-mutacao:
-  name: Mutação
-  tags: [contagio]
-  rarity: comum
-  max: 3
-  requires_hack: contagion
-  hacks: {contagion: {spread: 1}}
-  desc: Contagion pula para +1 alvo.
-
-incubacao:
-  name: Incubação
-  tags: [contagio]
-  rarity: comum
-  max: 3
-  stats: {dot_duration: 2}
-  desc: Venenos e queimaduras duram +2 s.
-
+# --- Contágio ------------------------------------------------------------------
 virulencia:
   name: Virulência
   tags: [contagio]
@@ -37,49 +20,47 @@ virulencia:
   stats: {dot: 0.3}
   desc: +30% de dano de veneno e de queimadura.
 
-carga_viral:
-  name: Carga viral
+incubacao:
+  name: Incubação
   tags: [contagio]
   rarity: comum
-  max: 2
-  requires_hack: contagion
-  hacks: {contagion: {ram: -1, cooldown: 0.15}}
-  desc: Contagion custa -1 de RAM e recarrega 15% mais rápido.
+  max: 3
+  stats: {dot_duration: 1.5}
+  desc: Venenos e queimaduras duram +1,5 s.
 
-imunodeficiencia:
-  name: Imunodeficiência
+carga_toxica:
+  name: Carga tóxica
+  tags: [contagio]
+  rarity: comum
+  max: 3
+  tag_damage: {contagio: 0.25}
+  desc: Hacks de Contágio +25% de dano.
+
+ciclo_viral:
+  name: Ciclo viral
   tags: [contagio]
   rarity: raro
   max: 2
-  flags: {imuno: 0.15}
-  desc: Alvos envenenados tomam +15% de todo dano.
+  tag_cooldown: {contagio: 0.15}
+  desc: Hacks de Contágio recarregam 15% mais rápido.
 
-epidemia:
-  name: Epidemia
-  tags: [contagio]
-  rarity: raro
-  max: 1
-  flags: {epidemia: 1}
-  desc: Quem morre envenenado contamina quem está em volta.
-
-paciente_zero:
-  name: Paciente zero
-  tags: [contagio, cadeia]
-  rarity: raro
-  max: 1
-  requires_hack: overheat
-  flags: {paciente_zero: 1}
-  desc: Overheat também envenena.
-
-# --- Sobrecarga: dano alto, cadência baixa -------------------------------------
+# --- Sobrecarga ----------------------------------------------------------------
 capacitor:
   name: Capacitor
   tags: [sobrecarga]
   rarity: comum
   max: 3
   tag_damage: {sobrecarga: 0.4}
-  stats: {cooldown: -0.12}
-  desc: Hacks de Sobrecarga +40% de dano, mas tudo recarrega 12% mais devagar.
+  stats: {cooldown: -0.1}
+  desc: Hacks de Sobrecarga +40% de dano, mas tudo recarrega 10% mais devagar.
+
+amplificador:
+  name: Amplificador
+  tags: [sobrecarga]
+  rarity: comum
+  max: 3
+  tag_damage: {sobrecarga: 0.25}
+  desc: Hacks de Sobrecarga +25% de dano.
 
 pico_tensao:
   name: Pico de tensão
@@ -89,58 +70,30 @@ pico_tensao:
   stats: {crit_chance: 0.08, crit_mult: 0.25}
   desc: +8% de chance de crítico e +25% de dano crítico.
 
-sobretensao:
-  name: Sobretensão
-  tags: [sobrecarga, cadeia]
+resfriamento:
+  name: Resfriamento líquido
+  tags: [sobrecarga]
+  rarity: raro
+  max: 2
+  tag_cooldown: {sobrecarga: 0.15}
+  desc: Hacks de Sobrecarga recarregam 15% mais rápido.
+
+# --- Cadeia --------------------------------------------------------------------
+condutividade:
+  name: Condutividade
+  tags: [cadeia]
   rarity: comum
   max: 3
-  requires_hack: short_circuit
-  hacks: {short_circuit: {damage: 0.5}}
-  desc: Short Circuit +50% de dano.
+  tag_damage: {cadeia: 0.25}
+  desc: Hacks de Cadeia +25% de dano.
 
-dissipador:
-  name: Dissipador
-  tags: [sobrecarga]
-  rarity: comum
-  max: 2
-  stats: {ram: 3}
-  requires_hack: synapse_burnout
-  hacks: {synapse_burnout: {cooldown: 0.2}}
-  desc: +3 de RAM e Synapse Burnout recarrega 20% mais rápido.
-
-burnout:
-  name: Burnout
-  tags: [sobrecarga]
-  rarity: raro
-  max: 2
-  flags: {execute: 0.6}
-  desc: Até +60% de dano quanto menos vida o alvo tem.
-
-overclock:
-  name: Overclock
-  tags: [sobrecarga]
-  rarity: epico
-  max: 1
-  flags: {overclock: 1}
-  desc: Os hacks gastam o dobro de RAM e causam 2,5 vezes o dano.
-
-# --- Cadeia: rápido -----------------------------------------------------------
-arco_extra:
-  name: Arco extra
+sinapse_rapida:
+  name: Sinapse rápida
   tags: [cadeia]
   rarity: comum
-  max: 4
-  requires_hack: short_circuit
-  hacks: {short_circuit: {jumps: 1}}
-  desc: Short Circuit salta para +1 alvo.
-
-microcodigo:
-  name: Microcódigo
-  tags: [cadeia]
-  rarity: raro
-  max: 2
-  stats: {ram_cost: 1}
-  desc: Todos os hacks custam -1 de RAM (no mínimo 1).
+  max: 3
+  tag_cooldown: {cadeia: 0.15}
+  desc: Hacks de Cadeia recarregam 15% mais rápido.
 
 retroalimentacao:
   name: Retroalimentação
@@ -150,14 +103,6 @@ retroalimentacao:
   stats: {ram_regen: 0.2}
   desc: +20% de RAM de volta por segundo.
 
-sinapse_rapida:
-  name: Sinapse rápida
-  tags: [cadeia]
-  rarity: comum
-  max: 3
-  stats: {cooldown: 0.15}
-  desc: Tudo recarrega 15% mais rápido.
-
 upload_rapido:
   name: Upload rápido
   tags: [cadeia]
@@ -166,24 +111,15 @@ upload_rapido:
   stats: {upload: 0.3}
   desc: Os hacks chegam 30% mais rápido.
 
-fagulha:
-  name: Fagulha
-  tags: [cadeia, contagio]
+microcodigo:
+  name: Microcódigo
+  tags: [cadeia]
   rarity: raro
-  max: 1
-  flags: {fagulha: 1}
-  desc: Quem toma choque pega fogo.
+  max: 2
+  stats: {ram_cost: 1}
+  desc: Todos os hacks custam -1 de RAM (no mínimo 1).
 
-# --- Controle e execução ------------------------------------------------------
-paralisia:
-  name: Paralisia
-  tags: [controle]
-  rarity: comum
-  max: 3
-  requires_hack: cripple_movement
-  hacks: {cripple_movement: {duration: 1}}
-  desc: Cripple Movement prende +1 s.
-
+# --- Controle ------------------------------------------------------------------
 persistencia:
   name: Persistência
   tags: [controle]
@@ -192,39 +128,29 @@ persistencia:
   stats: {control: 0.25}
   desc: Os controles duram +25%.
 
-vulneravel:
-  name: Vulnerável
+dominio:
+  name: Domínio
   tags: [controle]
   rarity: comum
-  max: 2
-  flags: {vuln_control: 0.3}
-  desc: +30% de dano em quem está sob controle.
+  max: 3
+  tag_damage: {controle: 0.3}
+  desc: Hacks de Controle +30% de dano.
 
-cegueira:
-  name: Cegueira
-  tags: [controle]
-  rarity: raro
-  max: 1
-  requires_hack: reboot_optics
-  hacks: {reboot_optics: {radius: 100}}
-  desc: Reboot Optics cega todos num raio de 100.
-
-eco_sonico:
-  name: Eco sônico
+repeticao:
+  name: Repetição
   tags: [controle]
   rarity: comum
-  max: 2
-  requires_hack: sonic_shock
-  hacks: {sonic_shock: {radius: 40, duration: 0.5}}
-  desc: Sonic Shock pega uma área maior e atordoa +0,5 s.
+  max: 3
+  tag_cooldown: {controle: 0.12}
+  desc: Hacks de Controle recarregam 12% mais rápido.
 
-execucao:
-  name: Execução
+firewall_reativo:
+  name: Firewall reativo
   tags: [controle]
   rarity: raro
-  max: 1
-  flags: {execucao: 0.2}
-  desc: Hacks de controle desligam quem não é chefe e está abaixo de 20% de vida.
+  max: 2
+  stats: {armor: 15}
+  desc: +15 de armadura.
 
 # --- Sem tag: servem a qualquer build -----------------------------------------
 blindagem:
@@ -306,3 +232,11 @@ nucleo_quente:
   max: 3
   stats: {damage: 0.15}
   desc: +15% de dano em tudo.
+
+dissipador:
+  name: Dissipador de RAM
+  tags: []
+  rarity: raro
+  max: 3
+  stats: {ram_regen: 0.15, ram: 2}
+  desc: +2 de RAM e +15% de RAM de volta por segundo.

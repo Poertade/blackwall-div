@@ -75,6 +75,10 @@ RECIPES = {
 }
 
 
+# Estes tomam o canal de um som mais velho se todos estiverem ocupados
+IMPORTANT = {"cast", "hurt", "boss", "wave", "clear", "victory", "flatline", "denied", "drained", "up", "blast"}
+
+
 class Audio:
     def __init__(self, volume=0.7):
         global RATE
@@ -86,6 +90,8 @@ class Audio:
         try:
             if not pygame.mixer.get_init():
                 pygame.mixer.init(RATE, -16, 1, 512)
+            # 8 canais (o padrão) acabam no meio de uma onda cheia e os efeitos somem por um tempo
+            pygame.mixer.set_num_channels(32)
             freq, _fmt, channels = pygame.mixer.get_init()
             RATE = freq
             self.channels = channels
@@ -116,4 +122,6 @@ class Audio:
         sound = self._get(name)
         if sound is not None:
             sound.set_volume(self.volume)
-            sound.play()
+            channel = pygame.mixer.find_channel(name in IMPORTANT)
+            if channel is not None:
+                channel.play(sound)

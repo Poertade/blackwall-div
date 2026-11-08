@@ -30,6 +30,9 @@ def make_icon() -> pygame.Surface:
 
 class App:
     def __init__(self, save_dir=None, windowed=True):
+        # a tela lógica é 1280x720; em tela cheia o SDL escala com filtro linear (sem pixelizar)
+        os.environ.setdefault("SDL_RENDER_SCALE_QUALITY", "1")
+        os.environ.setdefault("SDL_HINT_RENDER_SCALE_QUALITY", "1")
         pygame.mixer.pre_init(22050, -16, 2, 512)
         pygame.init()
         T.reset_fonts()

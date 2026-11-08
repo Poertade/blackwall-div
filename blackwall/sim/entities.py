@@ -12,7 +12,8 @@ def dist(ax, ay, bx, by) -> float:
 
 
 class Player:
-    __slots__ = ("x", "y", "hp", "ram", "invulnerable", "rooted", "root_immune", "moving", "facing")
+    __slots__ = ("x", "y", "hp", "ram", "invulnerable", "rooted", "root_immune", "moving", "facing", "dash_t",
+                 "dash_v", "slowmo")
 
     def __init__(self, x, y, hp, ram):
         self.x = x
@@ -24,6 +25,9 @@ class Player:
         self.root_immune = 0.0
         self.moving = False
         self.facing = 0.0
+        self.dash_t = 0.0        # o Kerenzikov em andamento
+        self.dash_v = (0.0, 0.0)
+        self.slowmo = False      # o Sandevistan ligado neste passo
 
 
 class Slot:

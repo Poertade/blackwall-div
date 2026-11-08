@@ -46,6 +46,20 @@ class HideoutScene:
         return self.app.profile
 
     def handle(self, event):
+        if event.type == pygame.MOUSEWHEEL and self.tab == "historia":
+            self.chat_scroll = max(0, getattr(self, "chat_scroll", 0) + event.y * 40)
+            return
+        if event.type == pygame.KEYDOWN and self.tab == "historia" and not event.mod & pygame.KMOD_CTRL:
+            numbers = {pygame.K_1: 0, pygame.K_2: 1, pygame.K_3: 2, pygame.K_4: 3}
+            if event.key in numbers:
+                chans = {c[0]: c for c in self.channels()}
+                current = chans.get(getattr(self, "channel", None))
+                if current:
+                    acts = self.actions(current[0], current[4])
+                    if numbers[event.key] < len(acts):
+                        acts[numbers[event.key]][1]()
+                        self.app.audio.play("click")
+                return
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.clicks.click(self.app.logical(event.pos)):
                 self.app.audio.play("click")
@@ -225,7 +239,7 @@ class HideoutScene:
                      anchor="topright")
             self.clicks.add(rect, lambda: self.start("infinite"))
         else:
-            gfx.text(surf, "Libera depois de vencer a 1ª camada.", (rect.x + 20, rect.y + 50), 16, T.FAINT)
+            gfx.text(surf, "Libera depois de vencer a primeira camada.", (rect.x + 20, rect.y + 50), 16, T.FAINT)
         # o deck que vai junto
         yy = rect.bottom + 22
         deck = self.c.decks[p.deck]
@@ -236,7 +250,7 @@ class HideoutScene:
             col = T.color(self.c.hacks[hid]["color"]) if hid else T.FAINT
             r = ui.chip(surf, (xx, yy + 28), label, col, 15)
             xx = r.right + 8
-        gfx.text(surf, "Segure o botão esquerdo para andar · teclas 1 a 6 lançam os hacks no ICE sob o cursor · "
+        gfx.text(surf, "O botão esquerdo usa o hack de movimento · teclas 1 a 7 lançam os hacks no ICE sob o cursor · "
                        "Esc pausa · Tab mostra a build", (x0, yy + 64), 15, T.DIM)
 
     # --- CYBERDECK -----------------------------------------------------------
@@ -367,157 +381,325 @@ class HideoutScene:
             gfx.text(surf, "Nada novo por enquanto.", (720, y), 17, T.DIM)
 
     # --- ÁRVORE --------------------------------------------------------------
-    def node_rect(self, node):
-        col, row = self.c.tree[node]["pos"]
-        return pygame.Rect(70 + col * 168, 110 + row * 130, 150, 96)
-
     def draw_arvore(self, surf, glow, mouse):
+        """A árvore da netrunner (Netrunner) e a de cada quickhack que você tem, escolhidas na coluna da esquerda."""
         p = self.p
-        for node, n in self.c.tree.items():
-            req = n.get("requires")
-            if req:
-                a, b = self.node_rect(req), self.node_rect(node)
-                col = T.CYAN if pf.tree_level(p, req) else T.FAINT
-                pygame.draw.line(surf, col, a.center, b.center, 2)
-        self.hover_node = None
-        for node, n in self.c.tree.items():
-            rect = self.node_rect(node)
-            level = pf.tree_level(p, node)
-            ok, why = pf.tree_status(p, self.c, node)
+        sel = getattr(self, "tree_sel", None)
+        if sel is not None and sel not in p.hacks:
+            sel = self.tree_sel = None
+        # o seletor
+        y = 100
+        options = [(None, "NETRUNNER", T.YELLOW)] + [(h, self.c.hacks[h]["name"], T.color(self.c.hacks[h]["color"]))
+                                                      for h in p.hacks if h in self.c.hack_trees]
+        for key, label, col in options:
+            rect = pygame.Rect(30, y, 230, 30)
+            active = key == sel
+            hover = rect.collidepoint(mouse)
+            pygame.draw.rect(surf, T.scale(col, 0.18) if active else (T.PANEL_2 if hover else T.PANEL), rect)
+            pygame.draw.rect(surf, col if active or hover else T.LINE, rect, 1)
+            gfx.text(surf, label, (rect.x + 10, rect.y + 5), 16, col if active else T.TEXT, "bold")
+            self.clicks.add(rect, lambda key=key: setattr(self, "tree_sel", key))
+            y += 34
+        # os nós
+        if sel is None:
+            nodes = self.c.tree
+            level_of = lambda n: pf.tree_level(p, n)
+            status = lambda n: pf.tree_status(p, self.c, n)
+            cost = lambda n: pf.tree_cost(self.c, n, level_of(n))
+            buy = self.buy_node
+            title, note = "NETRUNNER", "Só números: cada nível vale para todos os mergulhos."
+        else:
+            nodes = self.c.hack_trees[sel]
+            level_of = lambda n: pf.hack_level(p, sel, n)
+            status = lambda n: pf.hack_node_status(p, self.c, sel, n)
+            cost = lambda n: pf.hack_node_cost(self.c, sel, n, level_of(n))
+            buy = lambda n: self.buy_hack_node(sel, n)
+            title, note = self.c.hacks[sel]["name"].upper(), "Os efeitos especiais deste quickhack, para todos os mergulhos."
+        gfx.text(surf, title, (290, 96), 20, T.DIM, "bold")
+        rects = {}
+        for node, n in nodes.items():
+            if pf.visible(level_of, nodes, node):
+                col, row = n["pos"]
+                rects[node] = pygame.Rect(290 + col * 140, 126 + row * 122, 130, 104)
+        for node, rect in rects.items():
+            req = nodes[node].get("requires")
+            if req in rects:
+                pygame.draw.line(surf, T.CYAN, rects[req].center, rect.center, 2)
+        hovered = None
+        for node, rect in rects.items():
+            n = nodes[node]
+            level = level_of(node)
+            ok, why = status(node)
             hover = rect.collidepoint(mouse)
             if hover:
-                self.hover_node = node
+                hovered = node
             maxed = level >= n["max"]
-            col = T.YELLOW if maxed else (T.CYAN if ok else (T.DIM if level else T.FAINT))
+            col = T.YELLOW if maxed else (T.CYAN if ok else (T.TEXT if level else T.DIM))
             gfx.panel(surf, rect, col, T.PANEL_2 if hover else T.PANEL, cut=10, width=2 if hover else 1,
                       glow=glow if hover and ok else None)
-            gfx.text(surf, n["name"], (rect.x + 10, rect.y + 8), 17, T.TEXT, "bold")
-            gfx.text(surf, f"{level}/{n['max']}", (rect.right - 10, rect.y + 10), 14, col, "mono", anchor="topright")
-            for k in range(n["max"]):
-                pygame.draw.rect(surf, col if k < level else T.LINE,
-                                 (rect.x + 10 + k * ((rect.w - 20) / n["max"]), rect.y + 36,
-                                  (rect.w - 20) / n["max"] - 2, 6))
+            name = n["name"]
+            size = 16 if T.font(16, "bold").size(name)[0] <= rect.w - 16 else 13
+            gfx.text(surf, name, (rect.x + 8, rect.y + 8), size, T.TEXT, "bold")
+            gfx.text(surf, f"nível {level}/{n['max']}", (rect.x + 8, rect.y + 32), 13, col, "mono")
+            gfx.bar(surf, (rect.x + 8, rect.y + 52, rect.w - 16, 5), level / n["max"], col, back=T.LINE)
             if maxed:
-                gfx.text(surf, "MÁXIMO", (rect.x + 10, rect.y + 56), 15, T.YELLOW, "bold")
+                gfx.text(surf, "MÁXIMO", (rect.x + 8, rect.y + 70), 15, T.YELLOW, "bold")
             else:
-                cost = pf.tree_cost(self.c, node, level)
-                gfx.text(surf, f"{gfx.fmt(cost)} Ed", (rect.x + 10, rect.y + 56), 16,
-                         T.YELLOW if p.ed >= cost else T.DIM, "mono")
-            self.clicks.add(rect, lambda node=node: self.buy_node(node))
-        node = self.hover_node
-        if node:
-            n = self.c.tree[node]
-            ok, why = pf.tree_status(p, self.c, node)
-            rect = pygame.Rect(70, T.H - 110, 760, 70)
+                c = cost(node)
+                gfx.text(surf, f"{gfx.fmt(c)} Ed", (rect.x + 8, rect.y + 70), 15,
+                         T.YELLOW if p.ed >= c else T.DIM, "mono")
+            self.clicks.add(rect, lambda node=node: buy(node))
+        hidden = len(nodes) - len(rects)
+        if hidden:
+            gfx.text(surf, f"+{hidden} {'melhoria oculta' if hidden == 1 else 'melhorias ocultas'}: compre o nó "
+                           "de cima para revelar", (290, T.H - 140), 15, T.DIM)
+        if hovered:
+            n = nodes[hovered]
+            ok, why = status(hovered)
+            rect = pygame.Rect(290, T.H - 110, 760, 70)
             gfx.panel(surf, rect, T.LINE, T.PANEL, cut=10)
             gfx.text(surf, f"{n['name']}: {n['desc']}", (rect.x + 16, rect.y + 10), 19, T.TEXT, "bold")
             gfx.text(surf, "clique para comprar" if ok else why, (rect.x + 16, rect.y + 40), 15,
                      T.CYAN if ok else T.DIM)
-        gfx.text(surf, "Só números: cada nível vale para todos os mergulhos.", (T.W - 40, T.H - 70), 15, T.DIM,
-                 anchor="topright")
+        gfx.text(surf, note, (T.W - 30, T.H - 30), 15, T.DIM, anchor="topright")
+
+    def buy_hack_node(self, hack, node):
+        if pf.buy_hack_node(self.p, self.c, hack, node):
+            self.app.audio.play("buy")
+            self.app.save()
+        else:
+            self.app.audio.play("denied")
 
     # --- HISTÓRIA ------------------------------------------------------------
+    # --- HISTÓRIA: o Mensageiro (como no primeiro jogo) ---------------------------
+    def channels(self) -> list:
+        """As conversas: [(id, nome, papel, cor, itens)], na ordem dos contatos. Itens: (tipo, dado)."""
+        p, st = self.p, self.c.story
+        items = {}
+        for beat in story.beats(p, self.c):
+            items.setdefault(beat["from"], []).append(("beat", beat))
+        for m, status in story.missions(p, self.c):
+            if status != "locked":
+                items.setdefault(m["from"], []).append(("mission", (m, status)))
+        end = story.ending(p, self.c)
+        if end and p.path:
+            items.setdefault(st["paths"][p.path]["who"], []).append(("ending", end))
+        result = []
+        for cid, ch in st["characters"].items():
+            if cid in items:
+                result.append((cid, ch["name"], ch["role"], T.color(ch["color"]), items[cid]))
+        if p.path in ("equipe", "netwatch") and story.quest(p)["team"]:
+            name = "Equipe" if p.path == "equipe" else "Agente Varga"
+            role = "os runners que mergulham com você" if p.path == "equipe" else "o seu parceiro na Netwatch"
+            result.append(("_team", name, role, T.COLORS["green"], [("team", None)]))
+        return result
+
+    def unread_in(self, items) -> int:
+        read = set(story.quest(self.p)["read"])
+        return sum(1 for kind, data in items if kind == "beat" and data["id"] not in read)
+
+    def open_channel(self, cid):
+        self.channel = cid
+        self.chat_scroll = 0
+        self.armed = None
+
     def draw_historia(self, surf, glow, mouse):
         p = self.p
-        st = self.c.story
-        # as mensagens, da mais nova para a mais velha
-        x, y, w = 40, 100, 590
-        gfx.text(surf, "MENSAGENS", (x, y), 20, T.DIM, "bold")
-        y += 30
-        end = story.ending(p, self.c)
-        if end:
-            rect = pygame.Rect(x, y, w, 10)
-            lines = gfx.wrap(end["text"].strip(), 16, w - 28)
-            rect.h = 46 + len(lines) * 20
-            gfx.panel(surf, rect, T.YELLOW, T.PANEL_2, cut=10, glow=glow)
-            gfx.text(surf, end["title"].upper(), (x + 14, y + 10), 20, T.YELLOW, "title")
-            gfx.text_block(surf, end["text"].strip(), (x + 14, y + 38), w - 28, 16, T.TEXT)
-            y = rect.bottom + 12
-        for beat in reversed(story.beats(p, self.c)):
-            ch = st["characters"][beat["from"]]
-            col = T.color(ch["color"])
-            lines = gfx.wrap(beat["text"].strip().replace("\n", " "), 16, w - 28)
-            h = 40 + len(lines) * 20
-            if y + h > T.H - 40:
-                break
-            rect = pygame.Rect(x, y, w, h)
-            gfx.panel(surf, rect, T.scale(col, 0.7), T.PANEL, cut=8)
-            gfx.text(surf, ch["name"], (x + 14, y + 8), 18, col, "bold")
-            gfx.text(surf, ch["role"], (x + 20 + T.font(18, "bold").size(ch["name"])[0], y + 11), 14, T.DIM)
-            gfx.text_block(surf, beat["text"].strip().replace("\n", " "), (x + 14, y + 32), w - 28, 16, T.TEXT)
-            y += h + 10
-        story.mark_read(p, self.c)
-        # à direita: a escolha, ou as missões e a equipe
-        x, y, w = 660, 100, 580
-        if story.needs_path_choice(p):
-            gfx.text(surf, "A ENCRUZILHADA", (x, y), 20, T.RED, "bold")
-            gfx.text(surf, "Uma escolha por salvamento. Não dá para voltar atrás.", (x, y + 26), 15, T.DIM)
-            y += 56
-            for path in ("solo", "equipe", "netwatch"):
-                d = st["paths"][path]
-                col = T.color(d["color"])
-                rect = pygame.Rect(x, y, w, 150)
-                armed = self.armed == path
-                gfx.panel(surf, rect, T.RED if armed else col, T.PANEL_2 if armed else T.PANEL, cut=12,
-                          width=2 if armed else 1, glow=glow if armed else None)
-                who = st["characters"][d["who"]]["name"]
-                gfx.text(surf, d["name"].upper(), (x + 16, y + 12), 26, col, "title")
-                gfx.text(surf, f"com {who}" if path != "solo" else "recusar os dois convites", (x + 18, y + 44), 15,
-                         T.DIM)
-                gfx.text_block(surf, d["desc"], (x + 16, y + 68), w - 210, 15, T.TEXT)
-                label = "CONFIRMAR" if armed else "ESCOLHER"
-                ui.button(surf, self.clicks, (rect.right - 180, y + 50, 164, 50), label,
-                          lambda path=path: self.pick_path(path), mouse, col=T.RED if armed else col, size=18,
-                          sub="é para sempre" if armed else None)
-                y += 162
+        chans = self.channels()
+        frame = pygame.Rect(40, 96, T.W - 80, T.H - 120)
+        accent = T.RED
+        pygame.draw.rect(surf, (10, 11, 16), frame)
+        gfx.panel(surf, frame, accent, (10, 11, 16), cut=14)
+        pygame.draw.line(surf, accent, (frame.x, frame.y + 30), (frame.right, frame.y + 30))
+        pygame.draw.rect(surf, T.YELLOW, (frame.x + 16, frame.y + 10, 4, 12))
+        gfx.text(surf, "MENSAGEIRO", (frame.x + 28, frame.y + 7), 15, accent, "bold")
+        if not chans:
             return
-        if p.path is None:
-            gfx.text(surf, "Vença a 1ª camada. A Rhyme vai ter notícias.", (x, y), 18, T.DIM)
-            return
-        d = st["paths"][p.path]
-        gfx.text(surf, f"CAMINHO: {d['name'].upper()}", (x, y), 20, T.color(d["color"]), "bold")
-        y += 30
-        for m, status in story.missions(p, self.c):
-            rect = pygame.Rect(x, y, w, 104)
-            open_ = status == "open"
-            hover = open_ and rect.collidepoint(mouse)
-            col = T.COLORS["green"] if status == "done" else (T.YELLOW if open_ else T.FAINT)
-            gfx.panel(surf, rect, col, T.PANEL_2 if hover else T.PANEL, cut=10, width=2 if hover else 1,
-                      glow=glow if hover else None)
-            gfx.text(surf, m["name"], (x + 14, y + 8), 20, T.TEXT if status != "locked" else T.FAINT, "bold")
-            who = st["characters"][m["from"]]["name"]
-            gfx.text(surf, f"{who} · {m['waves']} ondas · {OBJECTIVES[m['objective']['type']]}", (x + 14, y + 34),
-                     14, T.DIM)
-            if status == "locked":
-                gfx.text(surf, f"depois da camada {m['requires']['layers']}", (x + 14, y + 58), 15, T.FAINT)
-            else:
-                gfx.text_block(surf, m["brief"], (x + 14, y + 54), w - 160, 14, T.TEXT)
-            gfx.text(surf, self.reward_text(m), (rect.right - 14, y + 10), 14, T.YELLOW, "bold", anchor="topright")
-            label = {"done": "FEITA", "open": "MERGULHAR", "locked": "BLOQUEADA"}[status]
-            gfx.text(surf, label, (rect.right - 14, rect.bottom - 28), 17, col, "bold", anchor="topright")
-            if open_:
-                self.clicks.add(rect, lambda m=m: self.start_mission(m))
-            y += 112
-        team = story.quest(p)["team"]
-        if p.path in ("equipe", "netwatch") and team:
+        ids = [c[0] for c in chans]
+        current = getattr(self, "channel", None)
+        if current not in ids:
+            unread = [c[0] for c in chans if self.unread_in(c[4])]
+            current = self.channel = (unread[0] if unread else ids[0])
+        # a lista de conversas
+        list_rect = pygame.Rect(frame.x + 1, frame.y + 31, 300, frame.h - 32)
+        pygame.draw.line(surf, T.LINE, (list_rect.right, list_rect.y), (list_rect.right, list_rect.bottom))
+        y = list_rect.y
+        for cid, name, role, col, items in chans:
+            row = pygame.Rect(list_rect.x, y, list_rect.w, 62)
+            active = cid == current
+            if active:
+                pygame.draw.rect(surf, (40, 18, 22), row)
+                pygame.draw.rect(surf, accent, (row.x, row.y, 3, row.h))
+            elif row.collidepoint(mouse):
+                pygame.draw.rect(surf, T.PANEL_2, row)
+            self.avatar(surf, name, col, (row.x + 14, row.y + 13), 36)
+            gfx.text(surf, name.upper(), (row.x + 60, row.y + 10), 15, T.TEXT, "bold")
+            preview = self.preview(items)
+            gfx.text(surf, preview, (row.x + 60, row.y + 34), 13, T.DIM)
+            unread = self.unread_in(items)
+            if unread and not active:
+                badge = pygame.Rect(row.right - 34, row.y + 10, 22, 20)
+                pygame.draw.rect(surf, accent, badge)
+                gfx.text(surf, str(unread), badge.center, 13, (10, 10, 14), "bold", anchor="center")
+            self.clicks.add(row, lambda cid=cid: self.open_channel(cid))
+            y += 64
+        cid, name, role, col, items = next(c for c in chans if c[0] == current)
+        # a conversa
+        chat = pygame.Rect(list_rect.right + 1, list_rect.y, frame.right - list_rect.right - 2, list_rect.h)
+        self.avatar(surf, name, col, (chat.x + 16, chat.y + 14), 36)
+        gfx.text(surf, name, (chat.x + 64, chat.y + 12), 19, T.TEXT, "bold")
+        gfx.text(surf, role, (chat.x + 64, chat.y + 36), 14, T.scale(accent, 0.8))
+        pygame.draw.line(surf, accent, (chat.x, chat.y + 64), (chat.right, chat.y + 64))
+        actions = self.actions(cid, items)
+        actions_h = sum(a[2] for a in actions) + (16 if actions else 0)
+        area = pygame.Rect(chat.x + 14, chat.y + 74, chat.w - 28, chat.h - 84 - actions_h)
+        if cid == "_team":
+            self.draw_team(surf, mouse, area)
+        else:
+            self.draw_bubbles(surf, items, area)
+        # as respostas / ações (como as opções de resposta do Mensageiro)
+        if actions:
+            y = area.bottom + 8
+            pygame.draw.line(surf, accent, (chat.x, y - 2), (chat.right, y - 2))
             y += 6
-            rate = story.income_rate(p, self.c)
-            title = "A EQUIPE" if p.path == "equipe" else "O PARCEIRO"
-            gfx.text(surf, title, (x, y), 18, T.DIM, "bold")
-            gfx.text(surf, f"rende {gfx.fmt(rate)} Ed por hora fora do mergulho", (x + w, y + 2), 15, T.YELLOW,
+            for label, action, h, col2 in actions:
+                rect = pygame.Rect(chat.x + 14, y, chat.w - 28, h - 6)
+                hover = rect.collidepoint(mouse)
+                pygame.draw.rect(surf, T.scale(col2, 0.16) if hover else (12, 13, 18), rect)
+                pygame.draw.rect(surf, col2 if hover else T.scale(col2, 0.6), rect, 1)
+                gfx.text(surf, label, (rect.x + 12, rect.centery), 16, col2, "ui", anchor="midleft")
+                self.clicks.add(rect, action)
+                y += h
+        story.quest(p)  # garante o estado
+        q = story.quest(p)
+        for kind, data in items:
+            if kind == "beat" and data["id"] not in q["read"]:
+                q["read"].append(data["id"])
+
+    def avatar(self, surf, name, col, pos, size):
+        rect = pygame.Rect(pos[0], pos[1], size, size)
+        pygame.draw.rect(surf, (10, 11, 16), rect)
+        pygame.draw.rect(surf, col, rect, 1)
+        pygame.draw.rect(surf, col, (rect.x, rect.bottom - 3, rect.w, 3))
+        gfx.text(surf, name[:1].upper(), rect.center, 18, col, "bold", anchor="center")
+
+    def preview(self, items) -> str:
+        kind, data = items[-1]
+        if kind == "beat":
+            text = data["text"].strip().splitlines()[-1]
+        elif kind == "mission":
+            text = f"Serviço: {data[0]['name']}"
+        elif kind == "ending":
+            text = data["title"]
+        else:
+            text = f"rende {gfx.fmt(story.income_rate(self.p, self.c))} Ed por hora"
+        return text if len(text) < 30 else text[:29] + "…"
+
+    def bubbles(self, items, width):
+        """Cada fala vira balões (um por linha do texto); os serviços e o final ganham balões próprios."""
+        result = []   # (linhas, cor da barra, título)
+        for kind, data in items:
+            if kind == "beat":
+                for line in data["text"].strip().splitlines():
+                    if line.strip():
+                        result.append((gfx.wrap(line.strip(), 16, width - 30), T.CYAN, None))
+            elif kind == "mission":
+                m, status = data
+                body = f"{m['brief']}  Recompensa: {self.reward_text(m)}."
+                title = f"SERVIÇO · {m['name']}" + ("  ·  FEITO" if status == "done" else "")
+                result.append((gfx.wrap(body, 16, width - 30), T.COLORS["green"] if status == "done" else T.YELLOW,
+                               title))
+            elif kind == "ending":
+                result.append((gfx.wrap(data["text"].strip().replace("\n", " "), 16, width - 30), T.YELLOW,
+                               data["title"].upper()))
+        return result
+
+    def draw_bubbles(self, surf, items, area):
+        width = int(area.w * 0.78)
+        bubbles = self.bubbles(items, width)
+        line_h = 21
+        heights = [len(lines) * line_h + 22 + (22 if title else 0) for lines, _c, title in bubbles]
+        total = sum(heights) + 10 * len(heights)
+        scroll = max(0, min(getattr(self, "chat_scroll", 0), total - area.h))
+        self.chat_scroll = scroll
+        y = area.bottom - total + scroll if total > area.h else area.y
+        clip = surf.get_clip()
+        surf.set_clip(area)
+        for (lines, col, title), h in zip(bubbles, heights):
+            if y + h >= area.y and y <= area.bottom:
+                w = max(T.font(16).size(row)[0] for row in lines) + 30 if lines else 200
+                if title:
+                    w = max(w, T.font(14, "bold").size(title)[0] + 30)
+                rect = pygame.Rect(area.x, y, min(width, w), h)
+                pygame.draw.rect(surf, (14, 18, 24), rect)
+                pygame.draw.rect(surf, T.scale(col, 0.55), rect, 1)
+                pygame.draw.rect(surf, col, (rect.x, rect.y, 3, rect.h))
+                yy = rect.y + 10
+                if title:
+                    gfx.text(surf, title, (rect.x + 14, yy), 14, col, "bold")
+                    yy += 22
+                for row in lines:
+                    gfx.text(surf, row, (rect.x + 14, yy), 16, T.TEXT)
+                    yy += line_h
+            y += h + 10
+        surf.set_clip(clip)
+        if total > area.h:
+            gfx.text(surf, "role o mouse para ver as mais antigas", (area.right, area.y - 6), 12, T.FAINT,
                      anchor="topright")
-            y += 26
-            for ally, level in team.items():
-                a = st["allies"][ally]
-                col = T.color(a["color"])
-                gfx.text(surf, f"{a['name']}  nv {level}", (x, y + 4), 17, col, "bold")
-                gfx.text(surf, a["desc"], (x, y + 26), 13, T.DIM)
-                ok, why = story.train_status(p, self.c, ally)
-                maxed = level >= st["ally_level"]["max"]
-                label = "MÁXIMO" if maxed else f"TREINAR {gfx.fmt(story.ally_cost(self.c, level))} Ed"
-                ui.button(surf, self.clicks, (x + w - 190, y + 4, 190, 36), label, lambda ally=ally: self.train(ally),
-                          mouse, enabled=ok, col=T.YELLOW, size=15)
-                y += 48
+
+    def actions(self, cid, items) -> list:
+        """As opções de resposta: a escolha do caminho, os serviços abertos. [(texto, ação, altura, cor)]."""
+        p, st = self.p, self.c.story
+        result = []
+        if cid == "rhyme" and story.needs_path_choice(p):
+            labels = {"solo": "Seguir sozinha", "equipe": "Aceitar o convite da Juno",
+                      "netwatch": "Aceitar a oferta da Netwatch"}
+            for i, path in enumerate(("solo", "equipe", "netwatch")):
+                d = st["paths"][path]
+                if self.armed == path:
+                    text = f"{i + 1}.  CONFIRMAR: {d['name']}. É para sempre."
+                    col = T.RED
+                else:
+                    text = f"{i + 1}.  {labels[path]} ({d['name']}): {d['desc']}"
+                    col = T.YELLOW
+                if T.font(16).size(text)[0] > 820:
+                    text = text[:110] + "…"
+                result.append((text, lambda path=path: self.pick_path(path), 46, col))
+        for kind, data in items:
+            if kind == "mission" and data[1] == "open":
+                m = data[0]
+                text = f"{len(result) + 1}.  ACEITAR SERVIÇO: {m['name']} ({m['waves']} ondas)"
+                result.append((text, lambda m=m: self.start_mission(m), 46, T.YELLOW))
+        return result
+
+    def draw_team(self, surf, mouse, area):
+        p, st = self.p, self.c.story
+        team = story.quest(p)["team"]
+        y = area.y
+        rate = story.income_rate(p, self.c)
+        gfx.text(surf, f"Fora do mergulho (até com o jogo fechado) a {'equipe' if p.path == 'equipe' else 'Netwatch'}"
+                       f" rende {gfx.fmt(rate)} Ed por hora.", (area.x, y), 16, T.YELLOW)
+        y += 34
+        for ally, level in team.items():
+            a = st["allies"][ally]
+            col = T.color(a["color"])
+            rect = pygame.Rect(area.x, y, area.w, 70)
+            pygame.draw.rect(surf, (14, 18, 24), rect)
+            pygame.draw.rect(surf, T.scale(col, 0.55), rect, 1)
+            pygame.draw.rect(surf, col, (rect.x, rect.y, 3, rect.h))
+            self.avatar(surf, a["name"].replace('"', ""), col, (rect.x + 14, rect.y + 16), 36)
+            gfx.text(surf, f"{a['name']}  ·  nível {level}", (rect.x + 62, rect.y + 12), 17, col, "bold")
+            gfx.text(surf, a["desc"], (rect.x + 62, rect.y + 40), 14, T.DIM)
+            ok, why = story.train_status(p, self.c, ally)
+            maxed = level >= st["ally_level"]["max"]
+            label = "MÁXIMO" if maxed else f"TREINAR {gfx.fmt(story.ally_cost(self.c, level))} Ed"
+            ui.button(surf, self.clicks, (rect.right - 210, rect.y + 16, 196, 38), label,
+                      lambda ally=ally: self.train(ally), mouse, enabled=ok, col=T.YELLOW, size=15)
+            y += 80
+        missing = [a for a in ("ruido", "mira") if p.path == "equipe" and a not in team]
+        for a in missing:
+            gfx.text(surf, f"{st['allies'][a]['name']} entra pelas missões da Juno.", (area.x, y), 15, T.FAINT)
+            y += 24
 
     def reward_text(self, m) -> str:
         r = m.get("reward", {})

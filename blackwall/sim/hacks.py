@@ -120,7 +120,7 @@ def detonate_grenade(dive, hid, h, target, point, mult):
 
 def system_reset(dive, hid, h, target, point, mult):
     if target.boss:
-        seconds = dive.stats.control_time(h["stun"])
+        seconds = dive.stats.control_time(h["stun"] + dive.stats.hack_mod(hid, "duration"))
         dive.apply_effect(target, "stun", seconds, 1)
         dive.hurt(target, target.max_hp * h["boss_damage"], hid, h["tags"], can_crit=False, color="white")
     else:

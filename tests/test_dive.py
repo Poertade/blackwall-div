@@ -5,7 +5,7 @@ import pytest
 from blackwall.sim import build, hacks, waves
 from blackwall.sim.dive import Dive, DiveConfig, DiveInput
 from blackwall.sim.stats import Mods, Stats
-from helpers import cast, put, quiet_dive, run
+from helpers import cast, clear_wave, hush, put, quiet_dive, run
 
 
 def still(e):
@@ -14,24 +14,72 @@ def still(e):
 
 
 # --- conteúdo -------------------------------------------------------------------
-def test_every_hack_has_an_effect(content):
-    assert set(content.hacks) == set(hacks.EFFECTS)
+def test_every_attack_hack_has_an_effect(content):
+    attack = {h for h, d in content.hacks.items() if d["kind"] != "movimento"}
+    assert attack == set(hacks.EFFECTS)
 
 
-def test_starting_hacks_are_short_circuit_and_ping(content):
-    assert sorted(h for h, d in content.hacks.items() if d["price"] == 0) == ["ping", "short_circuit"]
+def test_starting_hacks_are_walking_short_circuit_and_ping(content):
+    assert sorted(h for h, d in content.hacks.items() if d["price"] == 0) == ["andar", "ping", "short_circuit"]
 
 
-# --- andar e mirar -------------------------------------------------------------
-def test_holding_the_button_walks_toward_the_cursor_and_releasing_stops(content):
-    dive = quiet_dive(content)
+# --- o movimento é um quickhack ---------------------------------------------------
+def test_holding_andar_walks_toward_the_cursor_spends_ram_and_releasing_stops(content):
+    dive = quiet_dive(content, loadout=("andar", "short_circuit"))
     p = dive.player
-    x0 = p.x
-    run(dive, 0.5, DiveInput(move=(p.x + 400, p.y)))
+    x0, ram0 = p.x, p.ram
+    dive.player.ram = 5
+    run(dive, 0.5, DiveInput(aim=(p.x + 400, p.y), held=(0,)))
     assert p.x > x0 + 100
     x1 = p.x
-    run(dive, 0.5, DiveInput(move=None))
+    run(dive, 0.5, DiveInput(aim=(p.x + 400, p.y)))
     assert p.x == x1
+
+
+def test_without_ram_andar_does_not_move(content):
+    dive = quiet_dive(content, loadout=("andar", "short_circuit"))
+    dive.stats.ram_regen = 0
+    dive.player.ram = 0
+    x0 = dive.player.x
+    run(dive, 0.3, DiveInput(aim=(x0 + 400, dive.player.y), held=(0,)))
+    assert dive.player.x == x0
+
+
+def test_kerenzikov_dashes_and_is_invulnerable_while_dashing(content):
+    dive = quiet_dive(content, loadout=("kerenzikov", "short_circuit"))
+    p = dive.player
+    x0, ram = p.x, p.ram
+    assert dive.cast(0, (p.x + 500, p.y))
+    assert p.invulnerable > 0 and p.ram < ram
+    run(dive, 0.3)
+    assert p.x > x0 + 150
+    assert not dive.cast(0, (p.x + 500, p.y))       # recarga
+
+
+def test_teleporte_blinks_pushes_ice_and_works_while_paralyzed(content):
+    dive = quiet_dive(content, loadout=("teleporte", "short_circuit"))
+    p = dive.player
+    p.rooted = 5
+    e = put(dive, "sabertooth", p.x + 250, p.y + 30)
+    e.speed = 0
+    ex = e.x
+    assert dive.cast(0, (p.x + 250, p.y))
+    assert abs(p.x - (ex - 0)) < 60 and p.rooted == 0
+    assert e.hp < e.max_hp
+
+
+def test_sandevistan_slows_the_world(content):
+    dive = quiet_dive(content, loadout=("sandevistan", "short_circuit"))
+    p = dive.player
+    a = put(dive, "hellhound", 100, 100)
+    y0 = a.y
+    run(dive, 0.5, DiveInput(aim=(p.x + 300, p.y), held=(0,)))
+    slow = abs(a.y - y0) + abs(a.x - 100)
+    dive2 = quiet_dive(content, loadout=("sandevistan", "short_circuit"))
+    b = put(dive2, "hellhound", 100, 100)
+    run(dive2, 0.5, DiveInput(aim=(dive2.player.x + 300, dive2.player.y)))
+    normal = abs(b.y - 100) + abs(b.x - 100)
+    assert slow < normal * 0.6
 
 
 def test_aim_assist_picks_the_enemy_nearest_the_cursor(content):
@@ -70,21 +118,20 @@ def test_cooldown_blocks_a_second_cast(content):
     assert not dive.cast(0, (e.x, e.y))
 
 
-def test_short_circuit_jumps_with_arco_extra(content):
-    dive = quiet_dive(content)
-    dive.taken["arco_extra"] = 1
-    dive.recompute()
+def test_short_circuit_jumps_with_its_tree_and_the_cadeia_bonus(content):
+    # o Arco extra da árvore do Short Circuit (permanente) dá +1 salto
+    dive = quiet_dive(content, mods=Mods().add(content.hack_trees["short_circuit"]["arco_extra"]["effect"]))
     targets = [still(put(dive, "sabertooth", 200 + 60 * i, 120)) for i in range(5)]
     cast(dive, 0, targets[0], settle=0.4)
     assert len([e for e in targets if e.hp < e.max_hp]) == 2
     # com 2 ups de Cadeia, o bônus de conjunto dá mais um salto
-    dive.taken["arco_extra"] = 2
+    dive.taken["condutividade"] = 2
     dive.recompute()
     for e in targets:
         e.hp = e.max_hp
     dive.slots[0].cooldown = 0
     cast(dive, 0, targets[0], settle=0.4)
-    assert len([e for e in targets if e.hp < e.max_hp]) == 4
+    assert len([e for e in targets if e.hp < e.max_hp]) == 3      # o alvo + 1 salto da árvore + 1 do bônus
 
 
 def test_ping_marks_enemies_and_they_take_more_damage(content):
@@ -170,12 +217,18 @@ def test_upload_fizzles_and_refunds_if_the_target_dies(content):
     assert dive.player.ram == pytest.approx(ram, abs=0.5)
 
 
-def test_overclock_doubles_ram_cost(content):
-    dive = quiet_dive(content)
-    cost = dive.stats.ram_cost("short_circuit", content.hacks["short_circuit"])
-    dive.taken["overclock"] = 1
-    dive.recompute()
-    assert dive.stats.ram_cost("short_circuit", content.hacks["short_circuit"]) == pytest.approx(cost * 2)
+def test_ups_are_only_numbers(content):
+    for up_id, up in content.ups.items():
+        assert not up.get("hacks") and not up.get("flags"), up_id
+
+
+def test_tag_cooldown_ups_speed_up_only_their_build(content):
+    plain = Stats(content.balance, Mods())
+    s = Stats(content.balance, Mods().merge(build.ups_mods(content, Counter({"sinapse_rapida": 2}))))
+    sc = content.hacks["short_circuit"]
+    burn = content.hacks["synapse_burnout"]
+    assert s.cooldown_of("short_circuit", sc) < plain.cooldown_of("short_circuit", sc)
+    assert s.cooldown_of("synapse_burnout", burn) == pytest.approx(plain.cooldown_of("synapse_burnout", burn))
 
 
 def test_lifesteal_heals_but_is_capped_per_second(content):
@@ -193,7 +246,7 @@ def test_lifesteal_heals_but_is_capped_per_second(content):
 def test_wave_ends_after_its_duration_and_offers_ups(content):
     dive = quiet_dive(content)
     dive.player.hp = 5
-    run(dive, dive.plan.duration + 0.1)
+    clear_wave(dive)
     assert dive.phase == "choice"
     assert len(dive.offer) == 3
     assert dive.player.hp == dive.stats.max_hp
@@ -209,7 +262,7 @@ def test_waves_spawn_ice_on_their_own(content):
 
 def test_solo_gets_four_choices(content):
     dive = quiet_dive(content, choices=4)
-    run(dive, dive.plan.duration + 0.1)
+    clear_wave(dive)
     assert len(dive.offer) == 4
 
 
@@ -218,7 +271,7 @@ def test_wave_10_brings_the_layer_boss_and_killing_it_wins(content):
     dive.start_wave(10)
     assert dive.plan.boss == "kraken"
     assert dive.spawns and dive.spawns[0].boss
-    dive.plan.pool = {}
+    hush(dive)
     run(dive, 2.0)
     assert dive.boss is not None
     dive.kill(dive.boss)
@@ -268,18 +321,18 @@ def test_flatline_loses_a_quarter_of_the_ed(content):
 def test_extracting_between_waves_keeps_all_the_ed(content):
     dive = quiet_dive(content)
     dive.ed = 100
-    run(dive, dive.plan.duration + 0.1)
+    clear_wave(dive)
     dive.extract()
     assert dive.result == "extracted" and dive.ed_final == 100
 
 
 def test_same_seed_same_dive(content):
     def play(seed):
-        dive = Dive(content, DiveConfig(seed=seed))
+        dive = Dive(content, DiveConfig(seed=seed, loadout=["andar", "short_circuit", "ping"]))
         for i in range(60 * 20):
             target = dive.enemies[0] if dive.enemies else None
             aim = (target.x, target.y) if target else (0, 0)
-            dive.step(1 / 60, DiveInput(move=(200, 200), aim=aim, cast=(0,) if i % 30 == 0 else ()))
+            dive.step(1 / 60, DiveInput(aim=aim, cast=(1,) if i % 30 == 0 else (), held=(0,)))
         return dive.kills, round(dive.player.hp, 3), len(dive.enemies)
 
     assert play(5) == play(5)
@@ -319,7 +372,7 @@ def test_set_bonuses_turn_on_at_2_4_6_and_auto_at_3(content):
     dive.recompute()
     assert dive.auto == "contagio"
     dive.taken["incubacao"] = 3
-    dive.taken["mutacao"] = 1
+    dive.taken["carga_toxica"] = 1
     dive.recompute()
     assert [n for tag, n, _ in build.active_bonuses(content, dive.counts) if tag == "contagio"] == [2, 4, 6]
     assert dive.stats.flag("free_contagion")
@@ -369,5 +422,44 @@ def test_control_execute_finishes_low_controlled_ice(content):
 def test_lone_wolf_grows_on_clean_waves(content):
     mods = Mods().add({"flags": {"lone_wolf": 0.05}})
     dive = quiet_dive(content, mods=mods)
-    run(dive, dive.plan.duration + 0.1)
+    clear_wave(dive)
     assert dive.lone_wolf == pytest.approx(0.05)
+
+
+# --- ondas com quantidade fixa -------------------------------------------------------
+def test_a_wave_has_a_fixed_list_of_ice_and_ends_when_all_fall(content):
+    dive = Dive(content, DiveConfig(seed=4))
+    total = dive.wave_total
+    assert total > 5 and dive.remaining() == total
+    dive.player.invulnerable = 1e9
+    for _ in range(60 * 60):
+        dive.step(1 / 60)
+        for e in list(dive.enemies):
+            dive.kill(e)
+        if dive.phase != "wave":
+            break
+    assert dive.phase == "choice"
+    assert dive.kills == total
+
+
+def test_the_wave_does_not_end_on_time_while_ice_is_alive(content):
+    dive = quiet_dive(content)
+    dive.queue.clear()
+    e = put(dive, "sabertooth", 100, 100)
+    e.speed = 0
+    run(dive, dive.plan.duration + 5)
+    assert dive.phase == "wave"
+
+
+def test_reinforcements_arrive_if_the_wave_drags(content):
+    dive = quiet_dive(content)
+    dive.queue.clear()
+    dive.plan.pool = content.layers[0]["pool"]
+    dive.reinforcements = True
+    e = put(dive, "sabertooth", 100, 100)
+    e.speed = 0
+    dive.player.invulnerable = 1e9
+    run(dive, dive.plan.duration + content.balance["waves"]["reinforce_after"] - 1)
+    assert len(dive.enemies) + len(dive.spawns) == 1
+    run(dive, 2)
+    assert dive.reinforcing and len(dive.enemies) + len(dive.spawns) > 1

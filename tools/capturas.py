@@ -27,7 +27,7 @@ from blackwall.sim.dive import DiveInput  # noqa: E402
 
 
 def bot_input(dive, t):
-    """Anda em círculos longe dos ICE e lança o que estiver pronto no mais perto."""
+    """Anda em círculos longe dos ICE e lança o que estiver pronto no mais perto (o slot 0 é o Andar)."""
     p = dive.player
     near = [e for e in dive.enemies if (e.x - p.x) ** 2 + (e.y - p.y) ** 2 < 220 ** 2]
     move = (dive.W / 2 + math.cos(t * 0.6) * 380, dive.H / 2 + math.sin(t * 0.6) * 180)
@@ -39,13 +39,15 @@ def bot_input(dive, t):
         move = (p.x + dx / n * 100, p.y + dy / n * 100)
     target = min(dive.enemies, key=lambda e: (e.x - p.x) ** 2 + (e.y - p.y) ** 2, default=None)
     cast = ()
-    if target:
+    if target and int(t * 10) % 3 == 0:
         for i, s in enumerate(dive.slots):
-            if s.hack and s.cooldown <= 0 and p.ram >= dive.slot_cost(i, target):
+            if s.hack and dive.c.hacks[s.hack]["kind"] != "movimento" and s.cooldown <= 0 \
+                    and p.ram >= dive.slot_cost(i, target):
                 cast = (i,)
                 break
-    aim = (target.x, target.y) if target else move
-    return DiveInput(move=move, aim=aim, cast=cast)
+    if cast:
+        return DiveInput(aim=(target.x, target.y), cast=cast)
+    return DiveInput(aim=move, held=(0,))
 
 
 def play(app, scene, seconds, mouse=None):
@@ -85,7 +87,9 @@ def main():
     p.hacks += ["overheat", "contagion", "synapse_burnout", "cripple_movement", "sonic_shock"]
     p.decks += ["biotech", "raven"]
     pf.set_deck(p, c, "raven")
-    p.loadout = ["short_circuit", "contagion", "overheat", "sonic_shock"]
+    p.hacks += ["kerenzikov"]
+    p.loadout = ["andar", "short_circuit", "contagion", "overheat", "sonic_shock"]
+    p.hack_trees = {"contagion": {"mutacao": 2, "carga_viral": 1}, "short_circuit": {"arco_extra": 1}}
     from blackwall.meta import story
     p.quest["read"] = []
     app.switch(HideoutScene(app, tab="historia"))
@@ -97,6 +101,15 @@ def main():
         app.switch(HideoutScene(app, tab=tab))
         pygame.mouse.set_pos((300, 200) if tab != "arvore" else (240, 260))
         shot(app, out / f"esconderijo-{tab}.png")
+    scene = HideoutScene(app, tab="arvore")
+    scene.tree_sel = "contagion"
+    app.switch(scene)
+    pygame.mouse.set_pos((360, 300))
+    shot(app, out / "arvore-contagion.png")
+    scene = HideoutScene(app, tab="historia")
+    app.switch(scene)
+    scene.open_channel("_team")
+    shot(app, out / "historia-equipe.png")
     # uma missão da equipe: o download
     scene = DiveScene(app, pf.dive_config(p, c, "mission", seed=5, mission=c.mission("equipe_1")),
                       c.mission("equipe_1")["name"])
@@ -107,7 +120,7 @@ def main():
     # uma onda no meio
     scene = DiveScene(app, pf.dive_config(p, c, "layer", 0, seed=11), c.layers[0]["name"])
     app.switch(scene)
-    scene.dive.taken.update({"virulencia": 2, "mutacao": 1, "arco_extra": 1})
+    scene.dive.taken.update({"virulencia": 2, "carga_toxica": 1, "condutividade": 1})
     scene.dive.recompute()
     scene.dive.start_wave(5)
     play(app, scene, 16)
@@ -123,7 +136,7 @@ def main():
     # o chefe
     scene = DiveScene(app, pf.dive_config(p, c, "layer", 1, seed=4), c.layers[1]["name"])
     app.switch(scene)
-    scene.dive.taken.update({"capacitor": 2, "pico_tensao": 1, "sobretensao": 1})
+    scene.dive.taken.update({"capacitor": 2, "pico_tensao": 1, "amplificador": 1})
     scene.dive.recompute()
     scene.dive.start_wave(10)
     play(app, scene, 9)

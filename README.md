@@ -24,9 +24,9 @@ O jogo salva sozinho (depois de cada mergulho e de cada compra) em `%APPDATA%\Bl
 
 | | |
 |---|---|
-| **Segurar o botão esquerdo** | a netrunner anda até o cursor; soltou, ela para |
-| **Teclas 1 a 6** | lançam o quickhack daquele slot no ICE sob o cursor (a mira escolhe o mais perto) |
-| **Botão direito** | o mesmo que a tecla 1 |
+| **Botão esquerdo** | o hack de movimento do deck: segurar anda (Andar, Sandevistan), clicar dá o dash ou o teleporte |
+| **Teclas 1 a 7** | lançam o quickhack daquele slot no ICE sob o cursor (a mira escolhe o mais perto); a tecla do movimento também anda |
+| **Botão direito** | o primeiro hack de ataque do deck |
 | **Tab** | mostra a build: as tags, os bônus e o ataque automático |
 | **Esc** | pausa |
 | **F11** | tela cheia |
@@ -35,20 +35,28 @@ O jogo salva sozinho (depois de cada mergulho e de cada compra) em `%APPDATA%\Bl
 
 ## Como funciona
 
-- **O mergulho:** cada camada tem 10 ondas de 30 a 45 segundos, com um chefe na 10ª.
+- **O mergulho:** cada camada tem 10 ondas, com um chefe na 10ª.
+  - **As ondas:** cada uma tem uma quantidade fixa de ICE, que chegam em grupos, e só acaba quando todos caem. O HUD mostra quantos faltam. Se a onda demorar, chegam reforços.
+  - **O movimento é um quickhack:** ocupa um slot e gasta RAM. Há quatro:
+    - **Andar:** segurar; pouca RAM por segundo;
+    - **Kerenzikov:** arrancada invulnerável;
+    - **Teleporte:** some e reaparece no cursor, empurrando os ICE; funciona até paralisada;
+    - **Sandevistan:** segurar; corre com o tempo lento em volta, gastando muita RAM.
   - **Integridade:** a vida. Zerou, é **flatline**: você volta com 75% do Ed do mergulho.
   - **RAM:** os hacks gastam RAM, que volta com o tempo.
   - **Ed:** cai dos ICE e é recolhido ao passar perto.
   - **Entre as ondas:** você escolhe 1 de 3 ups. Também dá para trocar as ofertas (custa Ed) ou desconectar e voltar com todo o Ed.
-- **As builds:** cada up tem uma tag: Contágio, Sobrecarga, Cadeia ou Controle.
+- **As builds:** os ups do mergulho são só números (Integridade, dano, recarga, RAM, crítico...), e cada um tem uma tag: Contágio, Sobrecarga, Cadeia ou Controle.
   - **Bônus de conjunto:** 2, 4 e 6 ups da mesma tag ligam um bônus cada.
   - **Ataque automático:** com 3 ups, a tag que você mais pegou liga o ataque dela, o único que ataca sozinho.
   - **O guia:** as ofertas seguintes puxam para a sua tag.
   - **O deck:** só aparecem ups das builds que os hacks do deck permitem.
   - **Sem prender:** a build deixa os hacks dela bem mais fortes, mas os outros continuam funcionando.
-- **Os quickhacks:** os 15 do Cyberpunk 2077, de Short Circuit e Ping (os iniciais) a Blackwall Gateway e System Collapse. Os novos vêm ao vencer camadas, ou da loja do esconderijo.
-- **Os cyberdecks:** do Militech Paraline (2 slots) ao Militech Canto MK.6 (6 slots). Cada um tem um bônus.
-- **A árvore:** só números (dano, Integridade, RAM, crítico, armadura, roubo de vida...), paga com Ed. Os nós principais vão longe, então insistir sempre ajuda.
+- **Os quickhacks:** os 15 do Cyberpunk 2077, de Short Circuit e Ping (os iniciais) a Blackwall Gateway e System Collapse, mais os 4 de movimento. Os novos vêm ao vencer camadas, ou da loja do esconderijo.
+- **Os cyberdecks:** do Militech Paraline (3 slots) ao Militech Canto MK.6 (7 slots), contando o slot do movimento. Cada um tem um bônus.
+- **As árvores (aba ÁRVORE):** pagas com Ed e válidas para todos os mergulhos. Os nós ainda bloqueados ficam ocultos até você comprar o nó de cima.
+  - **Netrunner:** só números (dano, Integridade, RAM, crítico, armadura, roubo de vida...). Os nós principais vão longe, então insistir sempre ajuda.
+  - **Uma árvore por quickhack:** os efeitos especiais, como mais saltos do Short Circuit, Contagion pulando para mais alvos, o Overheat que também envenena e a Execução do Cripple Movement.
 - **As camadas:** são cinco, cada uma com seu chefe:
   1. a rede de Night City (Kraken);
   2. as redes corporativas (Agente Kessler, da Netwatch);
@@ -56,7 +64,7 @@ O jogo salva sozinho (depois de cada mergulho e de cada compra) em `%APPDATA%\Bl
   4. os arredores da Blackwall (Giant);
   5. o outro lado (a IA renegada).
 - **As ondas infinitas:** liberadas depois da 1ª camada. O recorde fica guardado.
-- **A história (aba HISTÓRIA):** a Rhyme, fixer de Watson, dá o primeiro serviço. Depois da 1ª camada, ela traz dois convites, e você escolhe um dos três caminhos. A escolha vale uma vez por salvamento, para sempre, e só depois dela a 2ª camada abre.
+- **A história (aba HISTÓRIA, no Mensageiro, como no primeiro jogo):** a Rhyme, fixer de Watson, dá o primeiro serviço. Depois da 1ª camada, ela traz dois convites, e você escolhe um dos três caminhos. Você responde escolhendo um dos três caminhos. A escolha vale uma vez por salvamento, para sempre, e só depois dela a segunda camada abre. Os serviços chegam como mensagens, e a equipe tem a própria conversa, onde você treina cada membro.
   - **Solo:**
     - +25% de dano e +20 de Integridade;
     - 4 opções de up em vez de 3;
@@ -68,7 +76,7 @@ O jogo salva sozinho (depois de cada mergulho e de cada compra) em `%APPDATA%\Bl
     - os membros sobem de nível com Ed.
   - **Netwatch:**
     - o Agente Varga mergulha com você;
-    - o Netdriver MK.5 tem 6 slots;
+    - o Netdriver MK.5 tem 7 slots;
     - +12% de dano, +10 de Integridade e um salário por hora menor que a renda da equipe;
     - as missões caçam IAs e os Voodoo Boys.
   - **As missões:** três por caminho, de 5 a 7 ondas, cada uma com um objetivo:

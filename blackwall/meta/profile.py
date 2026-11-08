@@ -17,6 +17,7 @@ START_DECK = "paraline"
 class Profile:
     ed: int = 0
     tree: dict = field(default_factory=dict)          # nó -> nível
+    hack_trees: dict = field(default_factory=dict)    # hack -> {nó -> nível}
     hacks: list = field(default_factory=list)         # os quickhacks que você tem
     decks: list = field(default_factory=lambda: [START_DECK])
     deck: str = START_DECK
@@ -34,6 +35,7 @@ class Profile:
 
 def new_profile(content) -> Profile:
     starting = [h for h, d in content.hacks.items() if d["price"] == 0]
+    starting.sort(key=lambda h: content.hacks[h]["kind"] != "movimento")   # o movimento no slot 1
     slots = content.decks[START_DECK]["slots"]
     loadout = (starting + [None] * slots)[:slots]
     return Profile(hacks=list(starting), loadout=loadout)
@@ -70,6 +72,48 @@ def buy_tree(profile: Profile, content, node: str) -> bool:
         return False
     profile.ed -= tree_cost(content, node, tree_level(profile, node))
     profile.tree[node] = tree_level(profile, node) + 1
+    return True
+
+
+# --- as árvores dos quickhacks -------------------------------------------------
+def visible(level_of, nodes: dict, node: str) -> bool:
+    """Um nó só aparece quando o nó que ele pede já tem nível (os outros ficam ocultos)."""
+    req = nodes[node].get("requires")
+    return not req or level_of(req) > 0
+
+
+def hack_level(profile: Profile, hack: str, node: str) -> int:
+    return profile.hack_trees.get(hack, {}).get(node, 0)
+
+
+def hack_node_cost(content, hack: str, node: str, level: int) -> int:
+    n = content.hack_trees[hack][node]
+    return int(round(n["cost"] * n.get("growth", 1.8) ** level))
+
+
+def hack_node_status(profile: Profile, content, hack: str, node: str) -> tuple:
+    if hack not in profile.hacks:
+        return False, "você não tem esse quickhack"
+    n = content.hack_trees[hack][node]
+    level = hack_level(profile, hack, node)
+    if level >= n["max"]:
+        return False, "no máximo"
+    req = n.get("requires")
+    if req and hack_level(profile, hack, req) < 1:
+        return False, f"precisa de {content.hack_trees[hack][req]['name']}"
+    cost = hack_node_cost(content, hack, node, level)
+    if profile.ed < cost:
+        return False, f"faltam {cost - profile.ed} Ed"
+    return True, ""
+
+
+def buy_hack_node(profile: Profile, content, hack: str, node: str) -> bool:
+    ok, _ = hack_node_status(profile, content, hack, node)
+    if not ok:
+        return False
+    level = hack_level(profile, hack, node)
+    profile.ed -= hack_node_cost(content, hack, node, level)
+    profile.hack_trees.setdefault(hack, {})[node] = level + 1
     return True
 
 
@@ -159,6 +203,10 @@ def permanent_mods(profile: Profile, content) -> Mods:
     for node, level in profile.tree.items():
         if node in content.tree and level > 0:
             mods.add({"stats": content.tree[node]["per_level"]}, level)
+    for hack, nodes in profile.hack_trees.items():
+        for node, level in nodes.items():
+            if hack in content.hack_trees and node in content.hack_trees[hack] and level > 0:
+                mods.add(content.hack_trees[hack][node]["effect"], level)
     mods.add(content.decks[profile.deck].get("mods") or {})
     if profile.path in PATH_MODS:
         mods.add(PATH_MODS[profile.path])
