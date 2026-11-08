@@ -34,6 +34,7 @@ class Content:
     tree: dict
     story: dict
     hack_trees: dict
+    prestige: dict
 
     def mission(self, mission_id: str) -> dict:
         for m in self.story["missions"]:
@@ -67,6 +68,7 @@ def load(data_dir: Path = DATA) -> Content:
         tree=_read(data_dir / "tree.yaml"),
         story=_read(data_dir / "story.yaml"),
         hack_trees=_read(data_dir / "hack_trees.yaml"),
+        prestige=_read(data_dir / "prestige.yaml"),
     )
     errors = validate(content)
     if errors:
@@ -103,7 +105,7 @@ def _check_story(c: Content, errors: list):
         if beat.get("from") not in chars:
             errors.append(f"fala {beat.get('id')}: personagem '{beat.get('from')}'")
         for key in beat.get("when", {}):
-            if key not in ("start", "layers", "path", "mission", "dives"):
+            if key not in ("start", "layers", "path", "mission", "dives", "prestige"):
                 errors.append(f"fala {beat.get('id')}: condição '{key}'")
     ids = set()
     for m in st.get("missions", []):
@@ -222,6 +224,17 @@ def validate(c: Content) -> list:
         if n.get("requires") and n["requires"] not in c.tree:
             errors.append(f"árvore {nid}: requires '{n['requires']}'")
     _check_story(c, errors)
+    for key in ("unlock_layers", "per_layer", "ed_unit", "per_waves", "bonus", "shop"):
+        if key not in c.prestige:
+            errors.append(f"prestígio: falta '{key}'")
+    for iid, item in c.prestige.get("shop", {}).items():
+        eff = item.get("effect", {})
+        _check_mods(f"prestígio {iid}", {"stats": eff.get("stats", {})}, c, errors)
+        for h in eff.get("start_hacks", []):
+            if h not in c.hacks:
+                errors.append(f"prestígio {iid}: hack '{h}'")
+        if eff.get("start_deck") and eff["start_deck"] not in c.decks:
+            errors.append(f"prestígio {iid}: deck '{eff['start_deck']}'")
     for hid, nodes in c.hack_trees.items():
         if hid not in c.hacks:
             errors.append(f"árvore do hack '{hid}': hack desconhecido")

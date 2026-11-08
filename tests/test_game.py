@@ -181,3 +181,71 @@ def test_sounds_are_not_muted_by_a_previous_dive(app):
     assert audio.play("hit", 900.0)        # um som no fim de um mergulho longo (relógio da tela em 900 s)
     time.sleep(0.05)
     assert audio.play("hit", 0.0)          # o mergulho seguinte começa com o relógio da tela em 0
+
+
+def test_escape_in_the_hideout_opens_the_options_and_volume_changes(app):
+    app.switch(HideoutScene(app))
+    frames(app, 2)
+    key(app, pygame.K_ESCAPE)
+    frames(app, 2)
+    opts = app.scene.options
+    assert opts is not None
+    before = app.profile.settings["volume"]
+    opts.volume("efeitos", -0.1)
+    assert app.profile.settings["volume"] == pytest.approx(before - 0.1)
+    assert app.audio.volume == pytest.approx(before - 0.1)
+    opts.toggle_shake()
+    assert app.profile.settings["shake"] is False
+    key(app, pygame.K_ESCAPE)
+    frames(app, 2)
+    assert app.scene.options is None
+
+
+def test_resetting_the_save_takes_two_clicks(app, tmp_path):
+    app.profile.ed = 999
+    app.profile.layers_cleared = 2
+    app.save()
+    app.switch(HideoutScene(app))
+    app.scene.open_options()
+    opts = app.scene.options
+    opts.reset()
+    assert app.profile.ed == 999                 # o primeiro clique só arma
+    opts.reset()
+    assert app.profile.ed == 0 and app.profile.layers_cleared == 0
+    assert list(tmp_path.glob("save-apagado-*.json"))
+    frames(app, 2)
+
+
+def test_the_blackwall_tab_appears_after_the_third_layer_and_crossing_takes_two_clicks(app):
+    app.switch(HideoutScene(app))
+    assert "blackwall" not in [k for k, _ in app.scene.tabs()]
+    app.profile.layers_cleared = 3
+    app.profile.path = "solo"
+    app.profile.prestige["life_ed"] = 20_000
+    scene = HideoutScene(app, tab="blackwall")
+    app.switch(scene)
+    frames(app, 2)
+    assert "blackwall" in [k for k, _ in scene.tabs()]
+    scene.cross()
+    assert app.profile.prestige["count"] == 0
+    scene.cross()
+    assert app.profile.prestige["count"] == 1 and app.profile.prestige["total"] == 9 + 6
+    assert app.profile.layers_cleared == 0 and scene.tab == "historia"
+    frames(app, 2)
+    scene.set_tab("blackwall")
+    frames(app, 2)                               # a aba fica (o prestígio já foi visto)
+
+
+def test_the_pause_has_options(app):
+    cfg = pf.dive_config(app.profile, app.content, "layer", 0, seed=3)
+    scene = DiveScene(app, cfg, "teste")
+    app.switch(scene)
+    key(app, pygame.K_ESCAPE)
+    frames(app, 2)
+    assert scene.paused
+    scene.open_options()
+    frames(app, 2)
+    assert scene.options is not None and scene.options.in_dive
+    key(app, pygame.K_ESCAPE)
+    frames(app, 2)
+    assert scene.options is None and scene.paused

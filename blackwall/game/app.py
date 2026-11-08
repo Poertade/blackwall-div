@@ -82,6 +82,12 @@ class App:
         except OSError as err:
             print(f"não deu para salvar: {err}", file=sys.stderr)
 
+    def reset_save(self):
+        """Apaga o progresso (o save velho vira uma cópia) e volta ao esconderijo do zero."""
+        self.profile = save_mod.reset(self.content, self.save_dir, settings=self.profile.settings)
+        from blackwall.game.scene_hideout import HideoutScene
+        self.switch(HideoutScene(self, tab="historia"))
+
     def toggle_fullscreen(self):
         try:
             pygame.display.toggle_fullscreen()

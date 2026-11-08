@@ -4,6 +4,8 @@ import pygame
 
 from blackwall.game import gfx, ui
 from blackwall.game import theme as T
+from blackwall.game.options import Options
+from blackwall.meta import prestige
 from blackwall.meta import profile as pf
 from blackwall.meta import story
 
@@ -45,7 +47,25 @@ class HideoutScene:
     def p(self):
         return self.app.profile
 
+    def tabs(self) -> list:
+        """As abas: a BLACKWALL aparece quando o prestígio abre pela primeira vez."""
+        if prestige.ever_seen(self.p, self.c):
+            return TABS + [("blackwall", "BLACKWALL")]
+        return TABS
+
+    def open_options(self):
+        self.options = Options(self.app, on_close=self.close_options)
+
+    def close_options(self):
+        self.options = None
+
     def handle(self, event):
+        if getattr(self, "options", None):
+            self.options.handle(event)
+            return
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.open_options()
+            return
         if event.type == pygame.MOUSEWHEEL and self.tab == "historia":
             self.chat_scroll = max(0, getattr(self, "chat_scroll", 0) + event.y * 40)
             return
@@ -70,9 +90,10 @@ class HideoutScene:
                     pf.set_slot(self.p, i, None)
                     self.app.save()
         elif event.type == pygame.KEYDOWN:
-            keys = {pygame.K_1: 0, pygame.K_2: 1, pygame.K_3: 2, pygame.K_4: 3, pygame.K_5: 4}
-            if event.key in keys and event.mod & pygame.KMOD_CTRL:
-                self.tab = TABS[keys[event.key]][0]
+            keys = {pygame.K_1: 0, pygame.K_2: 1, pygame.K_3: 2, pygame.K_4: 3, pygame.K_5: 4, pygame.K_6: 5}
+            tabs = self.tabs()
+            if event.key in keys and event.mod & pygame.KMOD_CTRL and keys[event.key] < len(tabs):
+                self.tab = tabs[keys[event.key]][0]
 
     def update(self, dt):
         self.bg.update(dt)
@@ -169,21 +190,31 @@ class HideoutScene:
                  glow=glow)
         x = 318
         news = bool(story.unread(self.p, self.c)) or story.needs_path_choice(self.p)
-        for key, label in TABS:
+        tabs = self.tabs()
+        width = 138 if len(tabs) <= 5 else 122
+        for key, label in tabs:
             active = self.tab == key
-            rect = pygame.Rect(x, 24, 138, 40)
+            rect = pygame.Rect(x, 24, width, 40)
             ui.button(surf, self.clicks, rect, label, lambda k=key: self.set_tab(k), mouse,
                       col=T.YELLOW if active else T.CYAN, size=18, glow=glow if active else None)
             if active:
                 pygame.draw.line(surf, T.YELLOW, (rect.x + 8, rect.bottom + 4), (rect.right - 8, rect.bottom + 4), 3)
             if key == "historia" and news and not active:
                 gfx.circle(surf, glow, T.RED, (rect.right - 10, rect.y + 9), 5)
-            x += 146
+            if key == "blackwall" and prestige.unlocked(self.p, self.c) and not active:
+                gfx.circle(surf, glow, T.COLORS["violet"], (rect.right - 10, rect.y + 9), 5)
+            x += width + 8
         pygame.draw.line(surf, T.LINE, (20, 84), (T.W - 20, 84))
         getattr(self, f"draw_{self.tab}")(surf, glow, mouse)
+        if self.p.prestige.get("total", 0):
+            gfx.text(surf, f"{self.p.prestige['fragments']} fragmentos de Relic", (T.W - 34, 54), 15,
+                     T.COLORS["violet"], "bold", anchor="topright")
+        ui.button(surf, self.clicks, (200, 56, 96, 22), "OPÇÕES (ESC)", self.open_options, mouse, size=13)
         if self.message:
             text, col, t = self.message
             gfx.text(surf, text, (T.W / 2, T.H - 24), 18, col, "bold", anchor="center")
+        if getattr(self, "options", None):
+            self.options.draw(surf, glow)
 
     # --- MERGULHO ------------------------------------------------------------
     def draw_mergulho(self, surf, glow, mouse):
@@ -713,3 +744,77 @@ class HideoutScene:
         if r.get("ally"):
             parts.append(self.c.story["allies"][r["ally"]]["name"].split('"')[0].strip())
         return " + ".join(parts)
+
+    # --- BLACKWALL: o prestígio ------------------------------------------------
+    def cross(self):
+        if getattr(self, "armed", None) != "blackwall":
+            self.armed = "blackwall"
+            self.app.audio.play("click")
+            return
+        gained = prestige.cross(self.p, self.c)
+        self.armed = None
+        self.app.audio.play("victory")
+        self.app.save()
+        self.tab = "historia"
+        self.channel = None
+        self.say(f"Você atravessou a Blackwall: +{gained} fragmentos de Relic.", T.COLORS["violet"])
+
+    def buy_prestige(self, item):
+        if prestige.buy(self.p, self.c, item):
+            self.app.audio.play("buy")
+            self.app.save()
+        else:
+            self.app.audio.play("denied")
+
+    def draw_blackwall(self, surf, glow, mouse):
+        p, cfg = self.p, self.c.prestige
+        violet = T.COLORS["violet"]
+        x, y, w = 40, 100, 590
+        gfx.text(surf, "ATRAVESSAR A BLACKWALL", (x, y), 30, violet, "title", glow=glow)
+        y += 44
+        y = gfx.text_block(surf, "A netrunner apaga a identidade e volta do zero, mais forte. Zera o Ed, as árvores, "
+                                 "os hacks e decks comprados, as camadas e o caminho da história. Ficam os "
+                                 "Fragmentos de Relic, a loja ao lado e os recordes.", (x, y), w, 16, T.TEXT) + 10
+        total, parts = prestige.fragments_for(p, self.c)
+        gfx.text(surf, f"Atravessando agora, você ganha {total} fragmentos:", (x, y), 18, T.YELLOW, "bold")
+        y += 30
+        rows = [(f"{p.layers_cleared} camadas vencidas nesta vida", parts["camadas"]),
+                (f"{gfx.fmt(p.prestige.get('life_ed', 0))} Ed ganhos nesta vida", parts["ed"]),
+                (f"recorde de {p.prestige.get('life_best', 0)} ondas infinitas nesta vida", parts["infinitas"])]
+        for label, value in rows:
+            gfx.text(surf, label, (x + 14, y), 16, T.DIM)
+            gfx.text(surf, f"+{value}", (x + w, y), 16, T.TEXT, "mono", anchor="topright")
+            y += 24
+        y += 16
+        if prestige.unlocked(p, self.c):
+            armed = getattr(self, "armed", None) == "blackwall"
+            label = "CONFIRMAR: APAGAR A IDENTIDADE" if armed else "ATRAVESSAR A BLACKWALL"
+            ui.button(surf, self.clicks, (x, y, w, 60), label, self.cross, mouse, col=T.RED if armed else violet,
+                      size=20, glow=glow, sub=f"+{total} fragmentos; é para sempre" if armed else f"+{total} fragmentos")
+        else:
+            gfx.text(surf, f"Vença {cfg['unlock_layers']} camadas nesta vida para atravessar "
+                           f"(agora: {p.layers_cleared}).", (x, y + 18), 17, T.DIM)
+        y += 86
+        b = prestige.bonus(p, self.c)
+        gfx.text(surf, f"Travessias: {p.prestige.get('count', 0)}   ·   fragmentos já ganhos: "
+                       f"{p.prestige.get('total', 0)}", (x, y), 16, T.DIM)
+        gfx.text(surf, f"Bônus permanente: +{int(round(b.get('damage', 0) * 100))}% de dano e "
+                       f"+{int(round(b.get('ed', 0) * 100))}% de Ed", (x, y + 24), 16, violet, "bold")
+        # a loja de prestígio
+        x, y, w = 660, 100, 580
+        gfx.text(surf, f"LOJA DE PRESTÍGIO  ·  {p.prestige.get('fragments', 0)} fragmentos", (x, y), 20, T.DIM, "bold")
+        y += 34
+        for item, d in cfg["shop"].items():
+            level = prestige.shop_level(p, item)
+            rect = pygame.Rect(x, y, w, 58)
+            pygame.draw.rect(surf, T.PANEL, rect)
+            pygame.draw.rect(surf, T.scale(violet, 0.5) if level else T.LINE, rect, 1)
+            pygame.draw.rect(surf, violet, (rect.x, rect.y, 3, rect.h))
+            gfx.text(surf, f"{d['name']}  ·  {level}/{d['max']}", (x + 14, y + 6), 17, T.TEXT, "bold")
+            gfx.text(surf, d["desc"] if len(d["desc"]) < 70 else d["desc"][:68] + "…", (x + 14, y + 32), 13, T.DIM)
+            ok, _why = prestige.shop_status(p, self.c, item)
+            maxed = level >= d["max"]
+            label = "MÁXIMO" if maxed else f"{prestige.shop_cost(self.c, item, level)} frag."
+            ui.button(surf, self.clicks, (rect.right - 120, y + 12, 108, 34), label,
+                      lambda item=item: self.buy_prestige(item), mouse, enabled=ok, col=violet, size=15)
+            y += 64

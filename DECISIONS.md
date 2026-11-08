@@ -208,3 +208,41 @@
 - **A escolha do usuário:** suavizar só a primeira camada. Ela ganhou um `ramp: 0.35`: a onda 1 tem 35% dos ICE, subindo em linha reta até 100% na onda 10. As outras camadas, a chegada rápida e o dano em dobro ficaram como foram pedidos.
   - Agora o robô vai mais longe a cada mergulho: as mortes se espalham da onda 4 ao Kraken.
   - Ele leva ~18 mergulhos (1h) para vencer a primeira camada e ~3h15 para o jogo todo (Solo).
+
+### 2026-11-08: o prestígio e o menu de opções
+**As respostas do usuário:**
+- o prestígio abre depois da terceira camada;
+- zera quase tudo;
+- dá bônus fixo e loja;
+- o menu tem volumes e tela, apagar o save, controles e ajuda, e sair.
+
+**Atravessar a Blackwall** (`data/prestige.yaml`, `blackwall/meta/prestige.py`):
+- **Quantos fragmentos:** 3 por camada vencida, mais a raiz do Ed ganho na vida dividido por 500, mais 1 a cada 5 ondas infinitas.
+  - Atravessar cedo, logo depois da terceira camada, rende uns 10 a 15.
+  - No fim do jogo, rende uns 34.
+- **Zera:** o Ed, a árvore Netrunner, as árvores dos hacks, os hacks e decks comprados, as camadas, o caminho e a equipe (a história recomeça, e a Rhyme comenta o "rosto novo").
+- **Fica:**
+  - os fragmentos (disponíveis e o total já ganho);
+  - a loja de prestígio;
+  - o recorde das infinitas, as estatísticas e as opções.
+- **O bônus:** cada fragmento já ganho dá +5% de dano e +5% de Ed para sempre; gastar na loja não tira.
+- **A loja de prestígio:**
+  - Memória residual: Ed no começo de cada vida;
+  - Integridade de Relic;
+  - RAM fantasma;
+  - Arsenal guardado: um quickhack a mais por nível;
+  - Deck de reserva: começa com o Biotech Σ;
+  - Reflexos de Relic: recarga;
+  - Ganância de Relic: Ed;
+  - Atalho: começa com a primeira camada vencida e a recompensa dela.
+- **O ritmo (o robô, Solo):** a primeira vida leva ~3h15 até a quinta camada e dá 34 fragmentos. A segunda vence as cinco camadas em ~55 min.
+
+**O menu de opções** (`blackwall/game/options.py`):
+- abre com Esc no esconderijo, ou com OPÇÕES na pausa do mergulho;
+- volume dos efeitos e da música em passos de 10%, tela cheia e tremor de tela;
+- controles e ajuda;
+- apagar o save:
+  - pede dois cliques e só funciona no esconderijo;
+  - o save velho vira `save-apagado-<hora>.json`;
+  - as opções continuam;
+- sair do jogo, que salva antes.

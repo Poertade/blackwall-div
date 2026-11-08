@@ -31,6 +31,9 @@ class Profile:
     last_seen: float = field(default_factory=time.time)
     settings: dict = field(default_factory=lambda: {"volume": 0.7, "music": 0.35, "fullscreen": False,
                                                      "shake": True})
+    # o prestígio (Atravessar a Blackwall): fica de uma vida para a outra
+    prestige: dict = field(default_factory=lambda: {"fragments": 0, "total": 0, "count": 0, "shop": {},
+                                                     "life_ed": 0, "life_best": 0})
 
 
 def new_profile(content) -> Profile:
@@ -210,6 +213,14 @@ def permanent_mods(profile: Profile, content) -> Mods:
     mods.add(content.decks[profile.deck].get("mods") or {})
     if profile.path in PATH_MODS:
         mods.add(PATH_MODS[profile.path])
+    # o prestígio: cada fragmento já ganho dá um bônus fixo; a loja de prestígio soma números
+    pr = profile.prestige
+    if pr.get("total"):
+        mods.add({"stats": content.prestige["bonus"]}, pr["total"])
+    for item, level in pr.get("shop", {}).items():
+        stats = content.prestige["shop"].get(item, {}).get("effect", {}).get("stats")
+        if stats and level > 0:
+            mods.add({"stats": stats}, level)
     return mods
 
 
@@ -258,6 +269,7 @@ def apply_result(profile: Profile, content, dive) -> dict:
     summary = {"result": dive.result, "ed": gained, "lost": int(dive.ed) - gained, "wave": dive.wave,
                "kills": dive.kills, "unlocked": [], "reward_ed": 0, "reward_hack": None, "record": False,
                "reward_deck": None, "reward_ally": None, "ending": None, "mission": None}
+    ed_before = profile.ed
     profile.ed += gained
     profile.stats["dives"] += 1
     profile.stats["kills"] += dive.kills
@@ -303,4 +315,8 @@ def apply_result(profile: Profile, content, dive) -> dict:
             if profile.layers_cleared == len(content.layers) and profile.path:
                 story.quest(profile)["ending"] = profile.path
                 summary["ending"] = profile.path
+    pr = profile.prestige
+    pr["life_ed"] = pr.get("life_ed", 0) + max(0, profile.ed - ed_before)
+    if cfg.mode == "infinite":
+        pr["life_best"] = max(pr.get("life_best", 0), dive.waves_cleared)
     return summary

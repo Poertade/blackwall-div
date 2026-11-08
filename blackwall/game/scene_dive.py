@@ -61,6 +61,9 @@ class DiveScene:
 
     def handle(self, event):
         d = self.dive
+        if getattr(self, "options", None):
+            self.options.handle(event)
+            return
         if event.type == pygame.KEYDOWN:
             key = event.key
             if d.phase == "over":
@@ -231,6 +234,8 @@ class DiveScene:
             self.draw_over(surf, glow)
         elif self.paused:
             self.draw_pause(surf, glow)
+            if getattr(self, "options", None):
+                self.options.draw(surf, glow)
 
     def draw_zones(self, surf, ox, oy):
         for z in self.dive.zones:
@@ -708,10 +713,15 @@ class DiveScene:
         loss = int(self.dive.ed * self.c.balance["flatline_ed_loss"])
         ui.button(surf, self.clicks, (T.W / 2 - 160, 350, 320, 56), "CORTAR A CONEXÃO", self.abort, mouse,
                   col=T.RED, size=18, sub=f"perde {gfx.fmt(loss)} Ed")
+        ui.button(surf, self.clicks, (T.W / 2 - 160, 520, 320, 48), "OPÇÕES", self.open_options, mouse, size=17)
         gfx.text(surf, "Clique com o botão esquerdo para marcar o destino. Teclas 1 a 7 lançam os hacks no ICE sob o cursor.",
                  (T.W / 2, 450), 16, T.DIM, anchor="center")
         gfx.text(surf, "TAB mostra a build. F11 alterna a tela cheia. F2 liga e desliga os efeitos, F3 a música.",
                  (T.W / 2, 474), 16, T.DIM, anchor="center")
+
+    def open_options(self):
+        from blackwall.game.options import Options
+        self.options = Options(self.app, in_dive=True, on_close=lambda: setattr(self, "options", None))
 
     def resume(self):
         self.paused = False

@@ -35,6 +35,8 @@ def beat_ok(profile, beat) -> bool:
         return False
     if "mission" in when and when["mission"] not in q["done"]:
         return False
+    if "prestige" in when and profile.prestige.get("count", 0) < when["prestige"]:
+        return False
     return True
 
 

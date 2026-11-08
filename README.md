@@ -89,6 +89,18 @@ O jogo salva sozinho (depois de cada mergulho e de cada compra) em `%APPDATA%\Bl
     Elas pagam Ed, quickhacks e membros da equipe.
   - **O fim:** a voz do outro lado da Blackwall fala com você nas camadas fundas. Cada caminho tem um final, e depois dele o jogo continua.
 
+- **O prestígio (aba BLACKWALL, depois da terceira camada):** atravessar a Blackwall apaga a identidade e recomeça do zero.
+  - **Zera:** o Ed, as árvores, os hacks e decks comprados, as camadas e o caminho (dá para escolher outro).
+  - **Fica:** os **Fragmentos de Relic**, a loja de prestígio e os recordes.
+  - **Quantos fragmentos:** 3 por camada vencida, mais a raiz do Ed ganho na vida, mais 1 a cada 5 ondas infinitas.
+  - **O bônus:** cada fragmento já ganho dá +5% de dano e de Ed para sempre, mesmo depois de gasto.
+  - **A loja de prestígio:** começar com Ed, com mais quickhacks, com o deck de 4 slots ou com a primeira camada vencida; mais Integridade, RAM, recarga e Ed.
+- **As opções (Esc no esconderijo, ou OPÇÕES na pausa):**
+  - volume dos efeitos e da música, tela cheia e tremor de tela;
+  - controles e ajuda;
+  - apagar o save (dois cliques; o save velho fica guardado como cópia);
+  - sair do jogo.
+
 O desenho completo está em [docs/GDD.md](docs/GDD.md). As decisões e os números estão em [DECISIONS.md](DECISIONS.md).
 
 ![A encruzilhada](docs/capturas/historia-encruzilhada.png)
@@ -131,6 +143,8 @@ O robô de balanceamento joga carreiras inteiras e mede quantos mergulhos e minu
 ```bash
 python tools/simular.py 3 --caminho=equipe
 ```
+
+Com `--vidas=2`, o robô atravessa a Blackwall no fim, gasta os fragmentos e joga a segunda vida.
 
 Para gerar o executável localmente:
 

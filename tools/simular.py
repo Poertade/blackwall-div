@@ -1,6 +1,8 @@
 """O robô de balanceamento: joga uma carreira inteira e mede o ritmo.
 
-    python tools/simular.py [carreiras] [--detalhes] [--caminho=solo|equipe|netwatch]
+    python tools/simular.py [carreiras] [--detalhes] [--caminho=solo|equipe|netwatch] [--vidas=2]
+
+Com --vidas=2, depois de vencer as 5 camadas o robô atravessa a Blackwall, gasta os fragmentos e joga de novo.
 
 Cada carreira começa do zero. O robô mergulha na camada mais funda que ainda não venceu, joga com uma
 estratégia simples (foge do ICE mais perto, lança o hack pronto no melhor alvo), volta, gasta o Ed
@@ -18,7 +20,7 @@ sys.path.insert(0, str(ROOT))
 
 from blackwall.content import load  # noqa: E402
 from blackwall.meta import profile as pf  # noqa: E402
-from blackwall.meta import story  # noqa: E402
+from blackwall.meta import prestige, story  # noqa: E402
 from blackwall.sim.dive import Dive, DiveInput  # noqa: E402
 
 STEP = 1 / 30
@@ -179,8 +181,8 @@ def spend(profile, content):
             return
 
 
-def career(content, seed, details=False, max_dives=120, path="solo"):
-    profile = pf.new_profile(content)
+def career(content, seed, details=False, max_dives=120, path="solo", profile=None):
+    profile = profile or pf.new_profile(content)
     minutes = 0.0
     marks = []
     dives = 0
@@ -200,7 +202,17 @@ def career(content, seed, details=False, max_dives=120, path="solo"):
             pf.choose_path(profile, content, path)
         spend(profile, content)
         arrange(profile, content)
-    return marks, dives, minutes
+    return marks, dives, minutes, profile
+
+
+def spend_fragments(profile, content):
+    """Gasta os fragmentos de Relic na loja de prestígio (o mais barato primeiro)."""
+    while True:
+        options = [(prestige.shop_cost(content, i, prestige.shop_level(profile, i)), i)
+                   for i in content.prestige["shop"] if prestige.shop_status(profile, content, i)[0]]
+        if not options:
+            return
+        prestige.buy(profile, content, min(options)[1])
 
 
 def main():
@@ -208,21 +220,35 @@ def main():
     runs = int(args[0]) if args else 3
     details = "--detalhes" in sys.argv
     path = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--caminho=")), "solo")
+    lives = int(next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--vidas=")), "1"))
+    table2 = {}
     content = load()
     table = {}
     for seed in range(1, runs + 1):
         if details:
             print(f"carreira {seed}")
-        marks, dives, minutes = career(content, seed, details, path=path)
+        marks, dives, minutes, profile = career(content, seed, details, path=path)
         for layer, d, m in marks:
             table.setdefault(layer, []).append((d, m))
         print(f"carreira {seed}: {len(marks)} camadas em {dives} mergulhos, {minutes:.0f} min")
+        for life in range(2, lives + 1):
+            gained = prestige.cross(profile, content)
+            spend_fragments(profile, content)
+            marks, dives, minutes, profile = career(content, seed * 7 + life, details, path=path, profile=profile)
+            for layer, d, m in marks:
+                table2.setdefault((life, layer), []).append((d, m))
+            print(f"  vida {life} (+{gained} fragmentos, total {profile.prestige['total']}): {len(marks)} camadas "
+                  f"em {dives} mergulhos, {minutes:.0f} min")
     print("\ncamada  mergulhos  minutos (média de quem chegou)")
     for layer in sorted(table):
         rows = table[layer]
         d = sum(r[0] for r in rows) / len(rows)
         m = sum(r[1] for r in rows) / len(rows)
         print(f"{layer:6d}  {d:9.1f}  {m:7.0f}   ({len(rows)}/{runs})")
+    for (life, layer), rows in sorted(table2.items()):
+        d = sum(r[0] for r in rows) / len(rows)
+        m = sum(r[1] for r in rows) / len(rows)
+        print(f"vida {life}, camada {layer}: {d:5.1f} mergulhos, {m:4.0f} min")
 
 
 if __name__ == "__main__":

@@ -49,6 +49,10 @@ def from_dict(content, data: dict) -> Profile:
     profile.hack_trees = {h: {n: int(lv) for n, lv in nodes.items() if n in content.hack_trees.get(h, {})}
                           for h, nodes in (profile.hack_trees or {}).items() if h in content.hack_trees}
     defaults = Profile()
+    for key, value in defaults.prestige.items():
+        profile.prestige.setdefault(key, value)
+    profile.prestige["shop"] = {k: int(v) for k, v in profile.prestige.get("shop", {}).items()
+                                if k in content.prestige["shop"]}
     for key, value in defaults.stats.items():
         profile.stats.setdefault(key, value)
     for key, value in defaults.settings.items():
@@ -83,3 +87,21 @@ def load(content, folder: Path | None = None) -> Profile:
         except OSError:
             pass
         return new_profile(content)
+
+
+def reset(content, folder: Path | None = None, settings: dict | None = None) -> Profile:
+    """Apaga o progresso e recomeça do zero. O save velho fica guardado como cópia (save-apagado-<hora>.json).
+
+    As opções (volumes, tela cheia, tremor) continuam, porque são preferências e não progresso."""
+    folder = Path(folder or save_dir())
+    path = folder / FILE
+    if path.exists():
+        try:
+            os.replace(path, folder / f"save-apagado-{int(time.time())}.json")
+        except OSError:
+            pass
+    profile = new_profile(content)
+    if settings:
+        profile.settings.update(settings)
+    save(profile, folder)
+    return profile

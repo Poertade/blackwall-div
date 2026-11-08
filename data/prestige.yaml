@@ -1,0 +1,74 @@
+# O prestígio: Atravessar a Blackwall. A netrunner apaga a identidade e volta do zero, mais forte.
+#
+# Abre com `unlock_layers` camadas vencidas na vida atual. Zera: Ed, as árvores, os hacks e decks comprados,
+# as camadas e o caminho da história. Fica: os Fragmentos de Relic, a loja de prestígio e os recordes.
+#
+# Fragmentos ganhos numa travessia:
+#   per_layer x camadas vencidas  +  raiz(Ed ganho na vida / ed_unit)  +  recorde das infinitas na vida / per_waves
+# Cada fragmento já ganho (gastar não tira) dá `bonus` de dano e de Ed para sempre.
+
+unlock_layers: 3
+per_layer: 3
+ed_unit: 500
+per_waves: 5
+bonus: {damage: 0.05, ed: 0.05}
+
+# A loja de prestígio: paga com fragmentos (estes sim são gastos).
+# effect: as chaves dos ups (stats), mais as do começo de cada vida:
+#   start_ed: Ed para começar; start_deck: o deck inicial; start_hacks: quickhacks a mais (um por nível,
+#   na ordem da lista); start_layers: camadas que já começam vencidas.
+shop:
+  memoria_residual:
+    name: Memória residual
+    desc: Cada vida começa com +400 Ed.
+    max: 5
+    cost: 2
+    growth: 1.5
+    effect: {start_ed: 400}
+  integridade_relic:
+    name: Integridade de Relic
+    desc: +15 de Integridade.
+    max: 5
+    cost: 2
+    growth: 1.5
+    effect: {stats: {hp: 15}}
+  ram_fantasma:
+    name: RAM fantasma
+    desc: +1 de RAM máxima.
+    max: 5
+    cost: 2
+    growth: 1.6
+    effect: {stats: {ram: 1}}
+  arsenal:
+    name: Arsenal guardado
+    desc: Cada vida começa com mais um quickhack (Overheat, Contagion, Cripple Movement, Synapse Burnout, Sonic Shock).
+    max: 5
+    cost: 3
+    growth: 1.5
+    effect: {start_hacks: [overheat, contagion, cripple_movement, synapse_burnout, sonic_shock]}
+  deck_reserva:
+    name: Deck de reserva
+    desc: Cada vida começa com o Biotech Σ MK.1 (4 slots).
+    max: 1
+    cost: 5
+    effect: {start_deck: biotech}
+  reflexos_relic:
+    name: Reflexos de Relic
+    desc: Tudo recarrega 5% mais rápido.
+    max: 3
+    cost: 4
+    growth: 1.6
+    effect: {stats: {cooldown: 0.05}}
+  ganancia_relic:
+    name: Ganância de Relic
+    desc: +10% de Ed.
+    max: 5
+    cost: 3
+    growth: 1.5
+    effect: {stats: {ed: 0.1}}
+  atalho:
+    name: Atalho
+    desc: Cada vida começa com a primeira camada vencida (e a recompensa dela).
+    max: 1
+    cost: 8
+    effect: {start_layers: 1}

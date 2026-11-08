@@ -110,6 +110,20 @@ def main():
     app.switch(scene)
     scene.open_channel("_team")
     shot(app, out / "historia-equipe.png")
+    # o prestígio e as opções
+    p.layers_cleared, p.prestige["life_ed"], p.prestige["life_best"] = 3, 30_000, 12
+    p.prestige.update({"fragments": 14, "total": 22, "count": 1, "shop": {"memoria_residual": 2, "arsenal": 1}})
+    scene = HideoutScene(app, tab="blackwall")
+    app.switch(scene)
+    pygame.mouse.set_pos((300, 450))
+    shot(app, out / "blackwall-prestigio.png")
+    scene.open_options()
+    pygame.mouse.set_pos((640, 500))
+    shot(app, out / "opcoes.png")
+    scene.options.help = True
+    shot(app, out / "opcoes-ajuda.png")
+    scene.close_options()
+    p.layers_cleared = 1
     # uma missão da equipe: o download
     scene = DiveScene(app, pf.dive_config(p, c, "mission", seed=5, mission=c.mission("equipe_1")),
                       c.mission("equipe_1")["name"])

@@ -25,6 +25,13 @@ beats:
       Tenho um serviço simples: as subredes de Watson estão cheias de ICE velho guardando dado novo.
       Mergulhe, limpe o caminho e traga o que conseguir. Se o Kraken acordar, corra. Ou não, se for boa.
 
+  - id: rosto_novo
+    when: {prestige: 1}
+    from: rhyme
+    text: |
+      Rosto novo, mesmo jeito de mexer no deck. Não vou perguntar o que você viu do outro lado da Blackwall.
+      Watson continua aqui, e o Kraken também. Dessa vez você já sabe o caminho.
+
   - id: primeira_volta
     when: {dives: 1}
     from: rhyme
