@@ -1,0 +1,308 @@
+# Os ups: as melhorias que você escolhe entre uma onda e outra (1 de 3).
+#
+# tags: a build que o up puxa (contagio, sobrecarga, cadeia, controle; sem tag = serve a todas).
+# rarity: comum, raro ou epico. max: quantas vezes dá para pegar.
+# requires_hack: só aparece se esse hack estiver no deck.
+#
+# O que um up pode mudar:
+#   stats:      números da netrunner (veja blackwall/sim/stats.py)
+#   tag_damage: +dano dos hacks de uma tag
+#   hacks:      números de um hack (damage: +%, ram: +RAM, cooldown: % mais rápido,
+#               duration: +segundos, radius: +raio, jumps: +saltos, spread: +alvos)
+#   flags:      regras especiais (veja blackwall/sim/dive.py)
+
+# --- Contágio: espalhar o dano -------------------------------------------------
+mutacao:
+  name: Mutação
+  tags: [contagio]
+  rarity: comum
+  max: 3
+  requires_hack: contagion
+  hacks: {contagion: {spread: 1}}
+  desc: Contagion pula para +1 alvo.
+
+incubacao:
+  name: Incubação
+  tags: [contagio]
+  rarity: comum
+  max: 3
+  stats: {dot_duration: 2}
+  desc: Venenos e queimaduras duram +2 s.
+
+virulencia:
+  name: Virulência
+  tags: [contagio]
+  rarity: comum
+  max: 4
+  stats: {dot: 0.3}
+  desc: +30% de dano de veneno e de queimadura.
+
+carga_viral:
+  name: Carga viral
+  tags: [contagio]
+  rarity: comum
+  max: 2
+  requires_hack: contagion
+  hacks: {contagion: {ram: -1, cooldown: 0.15}}
+  desc: Contagion custa -1 de RAM e recarrega 15% mais rápido.
+
+imunodeficiencia:
+  name: Imunodeficiência
+  tags: [contagio]
+  rarity: raro
+  max: 2
+  flags: {imuno: 0.15}
+  desc: Alvos envenenados tomam +15% de todo dano.
+
+epidemia:
+  name: Epidemia
+  tags: [contagio]
+  rarity: raro
+  max: 1
+  flags: {epidemia: 1}
+  desc: Quem morre envenenado contamina quem está em volta.
+
+paciente_zero:
+  name: Paciente zero
+  tags: [contagio, cadeia]
+  rarity: raro
+  max: 1
+  requires_hack: overheat
+  flags: {paciente_zero: 1}
+  desc: Overheat também envenena.
+
+# --- Sobrecarga: dano alto, cadência baixa -------------------------------------
+capacitor:
+  name: Capacitor
+  tags: [sobrecarga]
+  rarity: comum
+  max: 3
+  tag_damage: {sobrecarga: 0.4}
+  stats: {cooldown: -0.12}
+  desc: Hacks de Sobrecarga +40% de dano, mas tudo recarrega 12% mais devagar.
+
+pico_tensao:
+  name: Pico de tensão
+  tags: [sobrecarga]
+  rarity: comum
+  max: 3
+  stats: {crit_chance: 0.08, crit_mult: 0.25}
+  desc: +8% de chance de crítico e +25% de dano crítico.
+
+sobretensao:
+  name: Sobretensão
+  tags: [sobrecarga, cadeia]
+  rarity: comum
+  max: 3
+  requires_hack: short_circuit
+  hacks: {short_circuit: {damage: 0.5}}
+  desc: Short Circuit +50% de dano.
+
+dissipador:
+  name: Dissipador
+  tags: [sobrecarga]
+  rarity: comum
+  max: 2
+  stats: {ram: 3}
+  requires_hack: synapse_burnout
+  hacks: {synapse_burnout: {cooldown: 0.2}}
+  desc: +3 de RAM e Synapse Burnout recarrega 20% mais rápido.
+
+burnout:
+  name: Burnout
+  tags: [sobrecarga]
+  rarity: raro
+  max: 2
+  flags: {execute: 0.6}
+  desc: Até +60% de dano quanto menos vida o alvo tem.
+
+overclock:
+  name: Overclock
+  tags: [sobrecarga]
+  rarity: epico
+  max: 1
+  flags: {overclock: 1}
+  desc: Os hacks gastam o dobro de RAM e causam 2,5 vezes o dano.
+
+# --- Cadeia: rápido -----------------------------------------------------------
+arco_extra:
+  name: Arco extra
+  tags: [cadeia]
+  rarity: comum
+  max: 4
+  requires_hack: short_circuit
+  hacks: {short_circuit: {jumps: 1}}
+  desc: Short Circuit salta para +1 alvo.
+
+microcodigo:
+  name: Microcódigo
+  tags: [cadeia]
+  rarity: raro
+  max: 2
+  stats: {ram_cost: 1}
+  desc: Todos os hacks custam -1 de RAM (no mínimo 1).
+
+retroalimentacao:
+  name: Retroalimentação
+  tags: [cadeia]
+  rarity: comum
+  max: 3
+  stats: {ram_regen: 0.2}
+  desc: +20% de RAM de volta por segundo.
+
+sinapse_rapida:
+  name: Sinapse rápida
+  tags: [cadeia]
+  rarity: comum
+  max: 3
+  stats: {cooldown: 0.15}
+  desc: Tudo recarrega 15% mais rápido.
+
+upload_rapido:
+  name: Upload rápido
+  tags: [cadeia]
+  rarity: comum
+  max: 2
+  stats: {upload: 0.3}
+  desc: Os hacks chegam 30% mais rápido.
+
+fagulha:
+  name: Fagulha
+  tags: [cadeia, contagio]
+  rarity: raro
+  max: 1
+  flags: {fagulha: 1}
+  desc: Quem toma choque pega fogo.
+
+# --- Controle e execução ------------------------------------------------------
+paralisia:
+  name: Paralisia
+  tags: [controle]
+  rarity: comum
+  max: 3
+  requires_hack: cripple_movement
+  hacks: {cripple_movement: {duration: 1}}
+  desc: Cripple Movement prende +1 s.
+
+persistencia:
+  name: Persistência
+  tags: [controle]
+  rarity: comum
+  max: 3
+  stats: {control: 0.25}
+  desc: Os controles duram +25%.
+
+vulneravel:
+  name: Vulnerável
+  tags: [controle]
+  rarity: comum
+  max: 2
+  flags: {vuln_control: 0.3}
+  desc: +30% de dano em quem está sob controle.
+
+cegueira:
+  name: Cegueira
+  tags: [controle]
+  rarity: raro
+  max: 1
+  requires_hack: reboot_optics
+  hacks: {reboot_optics: {radius: 100}}
+  desc: Reboot Optics cega todos num raio de 100.
+
+eco_sonico:
+  name: Eco sônico
+  tags: [controle]
+  rarity: comum
+  max: 2
+  requires_hack: sonic_shock
+  hacks: {sonic_shock: {radius: 40, duration: 0.5}}
+  desc: Sonic Shock pega uma área maior e atordoa +0,5 s.
+
+execucao:
+  name: Execução
+  tags: [controle]
+  rarity: raro
+  max: 1
+  flags: {execucao: 0.2}
+  desc: Hacks de controle desligam quem não é chefe e está abaixo de 20% de vida.
+
+# --- Sem tag: servem a qualquer build -----------------------------------------
+blindagem:
+  name: Blindagem subdérmica
+  tags: []
+  rarity: comum
+  max: 5
+  stats: {hp: 25}
+  desc: +25 de Integridade.
+
+memoria:
+  name: Memória extra
+  tags: []
+  rarity: comum
+  max: 4
+  stats: {ram: 4}
+  desc: +4 de RAM.
+
+sanguessuga:
+  name: Sanguessuga
+  tags: []
+  rarity: comum
+  max: 3
+  stats: {lifesteal: 0.04}
+  desc: +4% de roubo de vida.
+
+reflexos:
+  name: Reflexos
+  tags: []
+  rarity: comum
+  max: 3
+  stats: {speed: 0.12}
+  desc: +12% de velocidade.
+
+ima:
+  name: Ímã de dados
+  tags: []
+  rarity: comum
+  max: 3
+  stats: {pickup: 0.5}
+  desc: +50% de alcance de coleta.
+
+firewall_pessoal:
+  name: Firewall pessoal
+  tags: []
+  rarity: comum
+  max: 4
+  stats: {armor: 10}
+  desc: +10 de armadura.
+
+refrigeracao:
+  name: Refrigeração
+  tags: []
+  rarity: comum
+  max: 3
+  stats: {cooldown: 0.08}
+  desc: Tudo recarrega 8% mais rápido.
+
+ganancia:
+  name: Ganância
+  tags: []
+  rarity: comum
+  max: 3
+  stats: {ed: 0.2}
+  desc: +20% de Ed.
+
+nanorreparo:
+  name: Nanorreparo
+  tags: []
+  rarity: comum
+  max: 3
+  stats: {hp_regen: 1}
+  desc: +1 de Integridade por segundo.
+
+nucleo_quente:
+  name: Núcleo quente
+  tags: []
+  rarity: raro
+  max: 3
+  stats: {damage: 0.15}
+  desc: +15% de dano em tudo.

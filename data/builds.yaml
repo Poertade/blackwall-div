@@ -1,0 +1,68 @@
+# As quatro builds (as tags dos ups). Juntar ups de uma tag liga os bônus de conjunto
+# (com 2, 4 e 6 ups) e, com 3 ups da tag que você mais pegou, o ataque automático dela.
+# Os bônus usam as mesmas chaves dos ups (stats, tag_damage, hacks, flags).
+
+contagio:
+  short: Contágio
+  name: Contágio
+  color: green
+  desc: Espalhar o dano. Veneno que pula de um ICE para outro.
+  auto:
+    name: Rastro de veneno
+    desc: Você deixa um rastro que envenena quem passa por ele.
+    dps: 7
+    every: 0.15
+    radius: 26
+    life: 2.6
+  bonuses:
+    2: {stats: {dot: 0.2}, desc: +20% de dano de veneno e de queimadura.}
+    4: {flags: {auto_spread: 1}, desc: "A cada 2 s, o veneno pula sozinho para um ICE perto."}
+    6: {flags: {free_contagion: 1}, desc: Contagion custa 0 de RAM em quem já está envenenado.}
+
+sobrecarga:
+  short: Sobrecarga
+  name: Sobrecarga
+  color: orange
+  desc: Dano alto, cadência baixa. Cada hack conta.
+  auto:
+    name: Descarga
+    desc: A cada 3 s, uma descarga forte no ICE com mais vida.
+    damage: 45
+    every: 3
+    range: 520
+  bonuses:
+    2: {tag_damage: {sobrecarga: 0.25}, desc: Hacks de Sobrecarga +25% de dano.}
+    4: {flags: {crit_stun: 0.6}, desc: Os críticos atordoam.}
+    6: {flags: {fifth_triple: 1}, desc: Cada 5º hack causa o triplo do dano.}
+
+cadeia:
+  short: Cadeia
+  name: Curto-circuito em cadeia
+  color: cyan
+  desc: Rápido. Choques que pulam de um alvo para outro.
+  auto:
+    name: Arco
+    desc: A cada segundo, um arco pula entre 3 ICE perto de você.
+    damage: 10
+    every: 1.0
+    range: 280
+    targets: 3
+  bonuses:
+    2: {flags: {extra_jump: 1}, desc: Os saltos pulam para +1 alvo.}
+    4: {flags: {no_falloff: 1}, desc: Os saltos não perdem dano.}
+    6: {flags: {jump_refund: 0.25}, desc: Cada salto devolve 0,25 de RAM.}
+
+controle:
+  short: Controle
+  name: Controle e execução
+  color: violet
+  desc: Prender, cegar, atordoar e acabar com quem não reage.
+  auto:
+    name: Campo de lentidão
+    desc: Um campo em volta de você deixa os ICE 30% mais lentos.
+    slow: 0.3
+    radius: 150
+  bonuses:
+    2: {stats: {control: 0.3}, desc: Os controles duram +30%.}
+    4: {flags: {control_refund: 1}, desc: Derrubar um ICE controlado devolve 1 de RAM.}
+    6: {flags: {control_execute: 0.15}, desc: ICE controlado abaixo de 15% de vida cai na hora.}

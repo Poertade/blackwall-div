@@ -1,0 +1,95 @@
+# As cinco camadas do mergulho, do raso ao fundo. Cada uma tem 10 ondas e um chefe na 10ª.
+#
+# hp e damage multiplicam a vida e o dano dos inimigos; ed multiplica o Ed que eles deixam.
+# budget multiplica o orçamento das ondas (quantos inimigos vêm).
+# pool: os inimigos da camada e o peso de cada um. from: a partir de que onda ele aparece.
+# reward: o que vencer a camada dá (Ed e um quickhack; se você já tiver o hack, vira Ed).
+
+- id: watson
+  name: A rede de Night City
+  sub: Subredes de Watson
+  color: cyan
+  hp: 1.0
+  damage: 1.0
+  ed: 1.0
+  budget: 1.0
+  pool:
+    wisp: {weight: 6, from: 1}
+    hellhound: {weight: 3, from: 2}
+    raven: {weight: 2, from: 4}
+    sabertooth: {weight: 1, from: 7}
+  boss: kraken
+  reward: {ed: 250, hack: synapse_burnout}
+
+- id: corpo
+  name: As redes corporativas
+  sub: Arasaka e Militech
+  color: blue
+  hp: 1.8
+  damage: 1.3
+  ed: 1.8
+  budget: 1.1
+  pool:
+    wisp: {weight: 4, from: 1}
+    hellhound: {weight: 3, from: 1}
+    raven: {weight: 3, from: 1}
+    asp: {weight: 2, from: 3}
+    netrunner: {weight: 1, from: 5}
+    sabertooth: {weight: 1, from: 6}
+  boss: agente
+  reward: {ed: 600, hack: sonic_shock}
+
+- id: oldnet
+  name: A Old Net
+  sub: As ruínas de antes do DataKrash
+  color: green
+  hp: 3.0
+  damage: 1.65
+  ed: 3.0
+  budget: 1.2
+  pool:
+    wisp: {weight: 4, from: 1}
+    asp: {weight: 3, from: 1}
+    scorpion: {weight: 3, from: 2}
+    raven: {weight: 2, from: 1}
+    hellhound: {weight: 2, from: 1}
+    sabertooth: {weight: 1, from: 5}
+  boss: liche
+  reward: {ed: 1400, hack: blackwall_gateway}
+
+- id: blackwall
+  name: Os arredores da Blackwall
+  sub: Onde a Netwatch ergueu o muro
+  color: orange
+  hp: 4.6
+  damage: 2.0
+  ed: 5.0
+  budget: 1.3
+  pool:
+    hellhound: {weight: 4, from: 1}
+    scorpion: {weight: 3, from: 1}
+    sabertooth: {weight: 2, from: 1}
+    netrunner: {weight: 2, from: 3}
+    raven: {weight: 2, from: 1}
+    asp: {weight: 2, from: 1}
+  boss: giant
+  reward: {ed: 3000, hack: system_collapse}
+
+- id: alem
+  name: O outro lado
+  sub: Além da Blackwall
+  color: red
+  hp: 6.0
+  damage: 2.4
+  ed: 8.0
+  budget: 1.4
+  pool:
+    wisp: {weight: 5, from: 1}
+    hellhound: {weight: 4, from: 1}
+    netrunner: {weight: 2, from: 1}
+    scorpion: {weight: 3, from: 1}
+    sabertooth: {weight: 2, from: 1}
+    asp: {weight: 2, from: 1}
+    raven: {weight: 2, from: 1}
+  boss: ia
+  reward: {ed: 6000}

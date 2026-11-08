@@ -1,0 +1,214 @@
+# Os inimigos: os Black ICE do Cyberpunk e os chefes de cada camada.
+#
+# ai: o comportamento (chase, swarm, ranged, charger, dropper, paralyzer, hacker; veja blackwall/sim/dive.py).
+# kind: ice, netrunner ou ai (o Netdriver da Netwatch bate mais em netrunner e ai).
+# hp, damage (ao encostar) e speed estão no tamanho da 1ª camada; as camadas multiplicam.
+# cost: quanto o inimigo gasta do orçamento da onda. pack: quantos vêm juntos.
+# shape e color: o desenho.
+
+enemies:
+  wisp:
+    name: Wisp
+    ai: swarm
+    kind: ice
+    hp: 12
+    speed: 92
+    radius: 9
+    damage: 6
+    ed: 1
+    cost: 1
+    pack: [3, 5]
+    shape: triangle
+    color: cyan
+
+  hellhound:
+    name: Hellhound
+    ai: chase
+    kind: ice
+    hp: 26
+    speed: 168
+    radius: 12
+    damage: 10
+    ed: 2
+    cost: 2.5
+    pack: [1, 2]
+    shape: arrow
+    color: red
+
+  raven:
+    name: Raven
+    ai: ranged
+    kind: ice
+    hp: 20
+    speed: 85
+    radius: 11
+    damage: 5
+    ed: 2
+    cost: 2.5
+    pack: [1, 2]
+    shape: diamond
+    color: violet
+    range: 270
+    fire_every: 2.2
+    bullet_speed: 250
+    bullet_damage: 8
+
+  sabertooth:
+    name: Sabertooth
+    ai: charger
+    kind: ice
+    hp: 90
+    speed: 55
+    radius: 17
+    damage: 18
+    ed: 5
+    cost: 6
+    pack: [1, 1]
+    shape: square
+    color: orange
+    charge_every: 4
+    windup: 0.7
+    charge_speed: 470
+    charge_time: 0.6
+
+  asp:
+    name: Asp
+    ai: dropper
+    kind: ice
+    hp: 32
+    speed: 78
+    radius: 12
+    damage: 7
+    ed: 3
+    cost: 3
+    pack: [1, 2]
+    shape: hex
+    color: green
+    drop_every: 2.4
+    puddle_radius: 36
+    puddle_dps: 9
+    puddle_life: 4
+
+  scorpion:
+    name: Scorpion
+    ai: paralyzer
+    kind: ice
+    hp: 42
+    speed: 112
+    radius: 13
+    damage: 8
+    ed: 3
+    cost: 3.5
+    pack: [1, 2]
+    shape: star
+    color: yellow
+    paralyze: 0.6
+
+  netrunner:
+    name: Netrunner da Netwatch
+    ai: hacker
+    kind: netrunner
+    hp: 48
+    speed: 70
+    radius: 13
+    damage: 6
+    ed: 7
+    cost: 6
+    pack: [1, 1]
+    shape: ring
+    color: blue
+    range: 340
+    hack_every: 5.5
+    hack_upload: 1.2
+    drain: 3            # RAM roubada
+    delay: 1.0          # segundos a mais nas recargas
+
+# Os chefes. attacks: a lista de ataques (radial, volley, spiral, summon, charge, drain, revive).
+# phase2: abaixo de 50% de vida os ataques vêm mais rápido (o número multiplica os intervalos).
+bosses:
+  kraken:
+    name: Kraken
+    title: O guardião das subredes de Watson
+    kind: ice
+    hp: 1600
+    speed: 42
+    radius: 44
+    damage: 20
+    ed: 120
+    shape: kraken
+    color: cyan
+    phase2: 0.7
+    attacks:
+      - {type: radial, every: 3.0, bullets: 14, speed: 190, damage: 9}
+      - {type: summon, every: 9, enemy: wisp, count: 5}
+
+  agente:
+    name: Agente Kessler
+    title: Netwatch, divisão de contenção
+    kind: netrunner
+    hp: 1250
+    speed: 85
+    radius: 34
+    damage: 16
+    ed: 160
+    shape: agent
+    color: blue
+    phase2: 0.75
+    attacks:
+      - {type: volley, every: 2.3, bullets: 5, spread: 36, speed: 280, damage: 7}
+      - {type: drain, every: 9, drain: 3, delay: 1.0}
+      - {type: charge, every: 7, windup: 0.8, speed: 440, time: 0.5}
+      - {type: summon, every: 16, enemy: netrunner, count: 1}
+
+  liche:
+    name: Liche
+    title: O que sobrou de uma IA da Old Net
+    kind: ai
+    hp: 1400
+    speed: 50
+    radius: 38
+    damage: 18
+    ed: 200
+    shape: liche
+    color: green
+    phase2: 0.75
+    attacks:
+      - {type: radial, every: 2.6, bullets: 10, speed: 160, damage: 9}
+      - {type: spiral, every: 8, time: 3, rate: 0.08, turn: 23, speed: 210, damage: 7}
+      - {type: summon, every: 10, enemy: asp, count: 3}
+      - {type: revive, hp: 0.5, time: 3}
+
+  giant:
+    name: Giant
+    title: O Black ICE que guarda os arredores da Blackwall
+    kind: ice
+    hp: 1900
+    speed: 34
+    radius: 58
+    damage: 24
+    ed: 260
+    shape: giant
+    color: orange
+    phase2: 0.75
+    attacks:
+      - {type: charge, every: 5.5, windup: 1.0, speed: 380, time: 0.8}
+      - {type: radial, every: 4.5, bullets: 18, speed: 130, damage: 11}
+      - {type: summon, every: 14, enemy: sabertooth, count: 1}
+
+  ia:
+    name: A IA renegada
+    title: A voz do outro lado da Blackwall
+    kind: ai
+    hp: 2400
+    speed: 70
+    radius: 42
+    damage: 24
+    ed: 400
+    shape: ai
+    color: red
+    phase2: 0.6
+    attacks:
+      - {type: spiral, every: 7, time: 3.5, rate: 0.06, turn: 19, speed: 230, damage: 8}
+      - {type: volley, every: 2.2, bullets: 7, spread: 50, speed: 300, damage: 9}
+      - {type: drain, every: 9, drain: 5, delay: 1.5}
+      - {type: summon, every: 11, enemy: hellhound, count: 4}

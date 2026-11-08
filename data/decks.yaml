@@ -1,0 +1,64 @@
+# Os cyberdecks. slots: quantos quickhacks vão no mergulho (teclas 1 a 6).
+# price: o preço na loja, em Ed (0 = o seu primeiro). requires_layer: quantas camadas vencidas para aparecer
+# na loja. path: só para quem segue esse caminho da história. mods: o bônus (as chaves dos ups).
+
+paraline:
+  name: Militech Paraline
+  slots: 2
+  price: 0
+  mods: {}
+  desc: O seu primeiro deck. Simples e confiável.
+
+biotech:
+  name: Biotech Σ MK.1
+  slots: 3
+  price: 300
+  mods: {stats: {ram_regen: 0.1}}
+  desc: +10% de RAM de volta por segundo.
+
+tiny_ninja:
+  name: Fuyutsuki Tiny Ninja
+  slots: 3
+  price: 380
+  mods: {stats: {control: 0.2}}
+  desc: Os controles duram +20%.
+
+raven:
+  name: Raven Microcyber MK.3
+  slots: 4
+  price: 1200
+  requires_layer: 1
+  mods: {hacks: {contagion: {spread: 1}}}
+  desc: Contagion pula para +1 alvo.
+
+rippler:
+  name: Tetratronic Rippler MK.4
+  slots: 4
+  price: 1400
+  requires_layer: 1
+  mods: {stats: {crit_chance: 0.1}}
+  desc: +10% de chance de crítico.
+
+arasaka:
+  name: Arasaka MK.4
+  slots: 5
+  price: 4000
+  requires_layer: 3
+  mods: {stats: {ram_cost_pct: 0.1}}
+  desc: Os hacks custam 10% menos RAM.
+
+netdriver:
+  name: Netwatch Netdriver MK.5
+  slots: 6
+  price: 0
+  path: netwatch
+  mods: {stats: {damage_ai: 0.15}}
+  desc: +15% de dano em IAs e netrunners. Só para quem trabalha na Netwatch.
+
+canto:
+  name: Militech Canto MK.6
+  slots: 6
+  price: 9000
+  requires_layer: 4
+  mods: {stats: {ultimate_cost: 0.25}}
+  desc: Os supremos custam 25% menos RAM.

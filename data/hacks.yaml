@@ -1,0 +1,226 @@
+# Os quickhacks (os nomes do Cyberpunk 2077).
+#
+# kind: combate, controle, furtivo ou supremo. tags: as builds que o hack ajuda (e que os ups dele contam).
+# ram: o custo. cooldown e upload em segundos (o upload é o tempo até o hack chegar no alvo).
+# target: enemy (o inimigo sob o cursor) ou point (o ponto do cursor).
+# price: o preço na loja, em Ed (0 = começa com ele). O que cada número faz está em blackwall/sim/hacks.py.
+
+short_circuit:
+  name: Short Circuit
+  kind: combate
+  tags: [sobrecarga, cadeia]
+  color: cyan
+  ram: 2
+  cooldown: 0.5
+  upload: 0.15
+  target: enemy
+  damage: 16
+  jumps: 0
+  jump_range: 170
+  falloff: 0.8            # cada salto leva 80% do dano do anterior
+  price: 0
+  desc: Dano elétrico no alvo.
+
+ping:
+  name: Ping
+  kind: furtivo
+  tags: []
+  color: white
+  ram: 1
+  cooldown: 3
+  upload: 0.1
+  target: point
+  radius: 200
+  duration: 6
+  vuln: 0.25              # os marcados tomam +25% de dano
+  price: 0
+  desc: Marca os inimigos da área. Eles tomam +25% de dano.
+
+overheat:
+  name: Overheat
+  kind: combate
+  tags: [cadeia, contagio]
+  color: orange
+  ram: 3
+  cooldown: 1.2
+  upload: 0.3
+  target: enemy
+  damage: 6
+  dps: 12
+  duration: 4
+  price: 120
+  desc: Queima o alvo por alguns segundos.
+
+contagion:
+  name: Contagion
+  kind: combate
+  tags: [contagio]
+  color: green
+  ram: 3
+  cooldown: 1.1
+  upload: 0.3
+  target: enemy
+  dps: 9
+  duration: 5
+  spread: 2
+  spread_range: 150
+  price: 150
+  desc: Veneno que pula para os inimigos perto.
+
+synapse_burnout:
+  name: Synapse Burnout
+  kind: combate
+  tags: [sobrecarga]
+  color: yellow
+  ram: 5
+  cooldown: 2.2
+  upload: 0.6
+  target: enemy
+  damage: 55
+  execute: 1.0            # até +100% de dano quanto menos vida o alvo tem
+  price: 240
+  desc: Dano alto, maior quanto menos vida o alvo tem.
+
+cripple_movement:
+  name: Cripple Movement
+  kind: controle
+  tags: [controle]
+  color: violet
+  ram: 2
+  cooldown: 1.6
+  upload: 0.2
+  target: enemy
+  damage: 5
+  duration: 2.5
+  price: 120
+  desc: Imobiliza o alvo.
+
+reboot_optics:
+  name: Reboot Optics
+  kind: controle
+  tags: [controle]
+  color: violet
+  ram: 3
+  cooldown: 2.6
+  upload: 0.3
+  target: enemy
+  radius: 0
+  duration: 4
+  price: 160
+  desc: Cega o alvo. Ele perde você de vista e erra os tiros.
+
+sonic_shock:
+  name: Sonic Shock
+  kind: controle
+  tags: [controle]
+  color: violet
+  ram: 4
+  cooldown: 3.2
+  upload: 0.3
+  target: enemy
+  radius: 110
+  damage: 12
+  duration: 1.3
+  price: 260
+  desc: Atordoa todos numa área pequena.
+
+weapon_glitch:
+  name: Weapon Glitch
+  kind: controle
+  tags: [controle]
+  color: violet
+  ram: 2
+  cooldown: 2.4
+  upload: 0.25
+  target: enemy
+  radius: 90
+  duration: 6
+  weaken: 0.5             # quem é atingido causa 50% menos dano
+  price: 180
+  desc: Os atingidos causam metade do dano.
+
+memory_wipe:
+  name: Memory Wipe
+  kind: furtivo
+  tags: [controle]
+  color: pink
+  ram: 4
+  cooldown: 5
+  upload: 0.5
+  target: enemy
+  duration: 5
+  price: 320
+  desc: O alvo esquece quem é o inimigo e ataca os outros ICE.
+
+cyberpsychosis:
+  name: Cyberpsychosis
+  kind: supremo
+  tags: [controle]
+  color: red
+  ram: 9
+  cooldown: 16
+  upload: 0.6
+  target: enemy
+  duration: 7
+  damage: 4               # o alvo causa 4 vezes o dano dele nos outros, por segundo
+  price: 900
+  desc: O alvo enlouquece e ataca tudo em volta.
+
+detonate_grenade:
+  name: Detonate Grenade
+  kind: supremo
+  tags: [sobrecarga]
+  color: orange
+  ram: 8
+  cooldown: 12
+  upload: 0.5
+  target: enemy
+  radius: 170
+  damage: 110
+  price: 800
+  desc: Uma explosão em área em volta do alvo.
+
+system_reset:
+  name: System Reset
+  kind: supremo
+  tags: [controle]
+  color: white
+  ram: 8
+  cooldown: 14
+  upload: 0.8
+  target: enemy
+  stun: 2.5               # num chefe: atordoa e tira 5% da vida
+  boss_damage: 0.05
+  price: 1000
+  desc: Desliga um inimigo que não é chefe. O chefe fica atordoado.
+
+blackwall_gateway:
+  name: Blackwall Gateway
+  kind: supremo
+  tags: [cadeia]
+  color: red
+  ram: 10
+  cooldown: 15
+  upload: 0.4
+  target: enemy
+  damage: 60
+  jumps: 9
+  jump_range: 260
+  falloff: 1.0
+  price: 1400
+  desc: Um raio da Blackwall que salta entre muitos inimigos.
+
+system_collapse:
+  name: System Collapse
+  kind: supremo
+  tags: [sobrecarga]
+  color: red
+  ram: 12
+  cooldown: 20
+  upload: 1.0
+  target: enemy
+  boss_damage: 0.18       # chefes perdem 18% da vida
+  radius: 120
+  damage: 60              # quem está em volta toma este dano
+  price: 1600
+  desc: Destrói o alvo. Chefes perdem um bom pedaço da vida.

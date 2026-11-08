@@ -1,0 +1,134 @@
+# A árvore permanente do esconderijo: só números, pagos com Ed.
+#
+# per_level: o que cada nível soma (as chaves de stats dos ups). cost: o preço do 1º nível;
+# cada nível seguinte custa growth vezes o anterior. requires: o nó anterior (precisa de 1 nível).
+# pos: [coluna, linha] no desenho da árvore.
+#
+# Os nós da primeira linha (Dano, Integridade, RAM de volta) vão longe e encarecem devagar: insistir
+# sempre ajuda, como num incremental. Os outros são curtos.
+
+integridade:
+  name: Integridade
+  per_level: {hp: 10}
+  max: 40
+  cost: 30
+  growth: 1.2
+  pos: [0, 0]
+  desc: +10 de Integridade.
+
+dano:
+  name: Dano
+  per_level: {damage: 0.05}
+  max: 40
+  cost: 40
+  growth: 1.2
+  pos: [2, 0]
+  desc: +5% de dano em tudo.
+
+ram_regen:
+  name: RAM de volta
+  per_level: {ram_regen: 0.05}
+  max: 30
+  cost: 50
+  growth: 1.22
+  pos: [4, 0]
+  desc: +5% de RAM de volta por segundo.
+
+coleta:
+  name: Coleta
+  per_level: {pickup: 0.15}
+  max: 5
+  cost: 30
+  growth: 1.45
+  pos: [6, 0]
+  desc: +15% de alcance de coleta.
+
+armadura:
+  name: Armadura
+  per_level: {armor: 4}
+  max: 10
+  cost: 60
+  growth: 1.4
+  requires: integridade
+  pos: [0, 1]
+  desc: +4 de armadura.
+
+velocidade:
+  name: Velocidade
+  per_level: {speed: 0.04}
+  max: 5
+  cost: 50
+  growth: 1.5
+  requires: integridade
+  pos: [1, 1]
+  desc: +4% de velocidade.
+
+critico:
+  name: Crítico
+  per_level: {crit_chance: 0.02}
+  max: 10
+  cost: 60
+  growth: 1.4
+  requires: dano
+  pos: [2, 1]
+  desc: +2% de chance de crítico.
+
+duracao:
+  name: Duração
+  per_level: {duration: 0.06}
+  max: 8
+  cost: 70
+  growth: 1.4
+  requires: ram_regen
+  pos: [3, 1]
+  desc: Os efeitos (veneno, controle, marcas) duram +6%.
+
+ram:
+  name: RAM
+  per_level: {ram: 1}
+  max: 12
+  cost: 45
+  growth: 1.35
+  requires: ram_regen
+  pos: [4, 1]
+  desc: +1 de RAM máxima.
+
+ed:
+  name: Ed por ICE
+  per_level: {ed: 0.08}
+  max: 10
+  cost: 60
+  growth: 1.4
+  requires: coleta
+  pos: [6, 1]
+  desc: +8% de Ed.
+
+roubo_vida:
+  name: Roubo de vida
+  per_level: {lifesteal: 0.01}
+  max: 5
+  cost: 120
+  growth: 1.6
+  requires: armadura
+  pos: [0, 2]
+  desc: +1% de roubo de vida.
+
+dano_critico:
+  name: Dano crítico
+  per_level: {crit_mult: 0.1}
+  max: 8
+  cost: 90
+  growth: 1.45
+  requires: critico
+  pos: [2, 2]
+  desc: +10% de dano crítico.
+
+recarga:
+  name: Recarga
+  per_level: {cooldown: 0.03}
+  max: 8
+  cost: 80
+  growth: 1.5
+  requires: ram
+  pos: [4, 2]
+  desc: Tudo recarrega 3% mais rápido.

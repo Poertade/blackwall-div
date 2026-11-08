@@ -1,0 +1,64 @@
+# Os números do jogo. Tudo aqui pode ser ajustado sem mexer no código.
+# Para medir o efeito de uma mudança: python tools/simular.py
+
+arena:
+  width: 1240
+  height: 540
+
+# A netrunner sem nenhuma melhoria
+player:
+  radius: 13
+  speed: 230          # pixels por segundo
+  hp: 100             # Integridade
+  ram: 10
+  ram_regen: 1.8      # RAM por segundo
+  armor: 0            # dano recebido = dano x 100 / (100 + armadura)
+  crit_chance: 0.05
+  crit_mult: 1.5
+  pickup: 70          # raio de coleta do Ed
+  lifesteal: 0
+  hp_regen: 0
+  invulnerable: 0.4   # segundos sem levar dano depois de um golpe
+
+aim_radius: 80        # a mira escolhe o inimigo mais perto do cursor dentro deste raio
+
+limits:
+  cooldown: 0.6       # a recarga cai no máximo 60%
+  upload: 0.7         # o upload acelera no máximo 70%
+  lifesteal_per_second: 0.08   # o roubo de vida cura no máximo 8% da Integridade por segundo
+
+waves:
+  per_layer: 10
+  duration_first: 30
+  duration_step: 1.5
+  duration_max: 45
+  budget_base: 1.3          # pontos de ameaça por segundo na 1ª onda
+  budget_growth: 1.13       # a cada onda
+  hp_growth: 0.12           # vida dos inimigos +12% a cada onda (dentro da camada)
+  damage_growth: 0.05
+  telegraph: 0.8            # o aviso antes de um inimigo aparecer
+  spawn_min_distance: 260
+  max_alive: 80
+  boss_budget: 0.45         # na onda do chefe, os outros vêm mais devagar
+  heal_between: 1.0         # quanto da Integridade volta entre as ondas (1 = tudo)
+
+ups:
+  choices: 3
+  tag_weight: 0.6           # cada up de uma tag deixa as ofertas dela 60% mais prováveis
+  rarity:
+    comum: 1.0
+    raro: 0.32
+    epico: 0.08
+  rarity_growth: 0.06       # raro e épico ficam mais comuns a cada onda
+  reroll_base: 6            # Ed para trocar as ofertas
+  reroll_step: 6
+
+build:
+  thresholds: [2, 4, 6]     # os bônus de conjunto de cada tag
+  auto_at: 3                # o ataque automático da tag mais pegada liga com 3 ups
+
+flatline_ed_loss: 0.25      # morrer perde 25% do Ed coletado no mergulho
+
+infinite:
+  layer_step: 2.2           # a cada 10 ondas os inimigos ficam 2,2 vezes mais fortes
+  ed_step: 1.8
