@@ -522,3 +522,14 @@ def test_ice_arrive_in_half_the_wave_time_and_hit_twice_as_hard(content):
 
 def test_the_netwatch_netrunner_is_just_netrunner(content):
     assert content.enemies["netrunner"]["name"] == "Netrunner"
+
+
+def test_the_first_layer_starts_gentle_and_ramps_up(content):
+    first = waves.plan(content, "layer", 0, 1)
+    ninth = waves.plan(content, "layer", 0, 9)
+    second_layer = waves.plan(content, "layer", 1, 1)
+    ramp = content.layers[0]["ramp"]
+    plain_first = content.balance["waves"]["budget_base"] * content.layers[0]["budget"]
+    assert first.budget == pytest.approx(plain_first * ramp)
+    assert ninth.budget > first.budget * 4
+    assert second_layer.budget == pytest.approx(content.balance["waves"]["budget_base"] * content.layers[1]["budget"])

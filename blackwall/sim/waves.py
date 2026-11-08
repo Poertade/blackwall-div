@@ -55,6 +55,9 @@ def plan(content, mode: str, layer: int, number: int, mission: dict | None = Non
     boss = data["boss"] if in_layer == per else None
     duration = 0.0 if boss else min(bal["duration_max"], bal["duration_first"] + bal["duration_step"] * (in_layer - 1))
     budget = bal["budget_base"] * bal["budget_growth"] ** (in_layer - 1) * budget_mult
+    ramp = data.get("ramp") if mode == "layer" else None
+    if ramp:
+        budget *= ramp + (1 - ramp) * (in_layer - 1) / max(1, per - 1)
     if boss:
         budget *= bal["boss_budget"]
     return WavePlan(

@@ -204,4 +204,7 @@
 - **A chegada dos ICE é mais rápida:** os mesmos ICE de cada onda chegam na metade do tempo (`arrival: 0.5`). Os reforços contam a partir daí, e os ICE que acompanham o chefe também vêm duas vezes mais rápido.
 - **O "Netrunner da Netwatch" virou só "Netrunner".**
 - **O dano de todos os ICE dobrou** (`enemy_damage: 2.0`): encostar, tiros, poças e ataques dos chefes. O roubo de RAM não mudou.
-- **Medido com o robô:** ele precisa de ~35 mergulhos (1h25) para vencer a primeira camada. Morre 22 vezes já na primeira onda, até a árvore permanente crescer. O jogo inteiro leva de 3h45 a 4h20, conforme o caminho.
+- **Medido com o robô:** ele precisava de ~35 mergulhos (1h25) para vencer a primeira camada e morria 22 vezes já na primeira onda, até a árvore permanente crescer. O jogo inteiro levava de 3h45 a 4h20.
+- **A escolha do usuário:** suavizar só a primeira camada. Ela ganhou um `ramp: 0.35`: a onda 1 tem 35% dos ICE, subindo em linha reta até 100% na onda 10. As outras camadas, a chegada rápida e o dano em dobro ficaram como foram pedidos.
+  - Agora o robô vai mais longe a cada mergulho: as mortes se espalham da onda 4 ao Kraken.
+  - Ele leva ~18 mergulhos (1h) para vencer a primeira camada e ~3h15 para o jogo todo (Solo).

@@ -1,7 +1,8 @@
 # As cinco camadas do mergulho, do raso ao fundo. Cada uma tem 10 ondas e um chefe na 10ª.
 #
 # hp e damage multiplicam a vida e o dano dos inimigos; ed multiplica o Ed que eles deixam.
-# budget multiplica o orçamento das ondas (quantos inimigos vêm).
+# budget multiplica o orçamento das ondas (quantos inimigos vêm). ramp (opcional): a fração dos ICE na onda 1,
+# subindo em linha reta até 100% na última onda da camada.
 # pool: os inimigos da camada e o peso de cada um. from: a partir de que onda ele aparece.
 # reward: o que vencer a camada dá (Ed e um quickhack; se você já tiver o hack, vira Ed).
 
@@ -13,6 +14,7 @@
   damage: 1.0
   ed: 1.0
   budget: 1.0
+  ramp: 0.35          # a primeira camada começa mansa: a onda 1 tem 35% dos ICE e sobe até 100% na onda 10
   pool:
     wisp: {weight: 6, from: 1}
     hellhound: {weight: 3, from: 2}
