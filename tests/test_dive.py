@@ -1,3 +1,4 @@
+import math
 from collections import Counter
 
 import pytest
@@ -24,16 +25,36 @@ def test_starting_hacks_are_walking_short_circuit_and_ping(content):
 
 
 # --- o movimento é um quickhack ---------------------------------------------------
-def test_holding_andar_walks_toward_the_cursor_spends_ram_and_releasing_stops(content):
+def test_clicking_marks_a_point_and_she_walks_there_over_time(content):
     dive = quiet_dive(content, loadout=("andar", "short_circuit"))
     p = dive.player
-    x0, ram0 = p.x, p.ram
+    x0 = p.x
     dive.player.ram = 5
-    run(dive, 0.5, DiveInput(aim=(p.x + 400, p.y), held=(0,)))
-    assert p.x > x0 + 100
-    x1 = p.x
-    run(dive, 0.5, DiveInput(aim=(p.x + 400, p.y)))
-    assert p.x == x1
+    dive.stats.ram_regen = 0          # para ver o gasto de andar
+    target = (p.x + 300, p.y)
+    run(dive, 1 / 60, DiveInput(aim=target, cast=(0,)))       # um clique marca o destino
+    assert p.dest is not None
+    run(dive, 0.5, DiveInput(aim=(0, 0)))                     # o cursor sai, ela continua indo
+    assert x0 + 50 < p.x < target[0]
+    assert p.ram < 5
+    run(dive, 2.0, DiveInput(aim=(0, 0)))
+    assert p.x == pytest.approx(target[0], abs=3) and p.dest is None  # chegou e parou
+
+
+def test_holding_drags_the_destination(content):
+    dive = quiet_dive(content, loadout=("andar", "short_circuit"))
+    p = dive.player
+    run(dive, 0.3, DiveInput(aim=(p.x + 200, p.y + 100), held=(0,)))
+    assert p.dest == pytest.approx((p.x + 0, p.y + 0), abs=400)
+    assert p.dest[1] > dive.H / 2
+
+
+def test_dash_cancels_the_walk(content):
+    dive = quiet_dive(content, loadout=("andar", "kerenzikov"))
+    p = dive.player
+    dive.set_destination(0, (p.x + 300, p.y))
+    assert dive.cast(1, (p.x, p.y + 300))
+    assert p.dest is None
 
 
 def test_without_ram_andar_does_not_move(content):
@@ -41,7 +62,8 @@ def test_without_ram_andar_does_not_move(content):
     dive.stats.ram_regen = 0
     dive.player.ram = 0
     x0 = dive.player.x
-    run(dive, 0.3, DiveInput(aim=(x0 + 400, dive.player.y), held=(0,)))
+    dive.set_destination(0, (x0 + 400, dive.player.y))
+    run(dive, 0.3)
     assert dive.player.x == x0
 
 
@@ -75,6 +97,7 @@ def test_sandevistan_slows_the_world(content):
     y0 = a.y
     run(dive, 0.5, DiveInput(aim=(p.x + 300, p.y), held=(0,)))
     slow = abs(a.y - y0) + abs(a.x - 100)
+    assert p.moving
     dive2 = quiet_dive(content, loadout=("sandevistan", "short_circuit"))
     b = put(dive2, "hellhound", 100, 100)
     run(dive2, 0.5, DiveInput(aim=(dive2.player.x + 300, dive2.player.y)))
@@ -463,3 +486,27 @@ def test_reinforcements_arrive_if_the_wave_drags(content):
     assert len(dive.enemies) + len(dive.spawns) == 1
     run(dive, 2)
     assert dive.reinforcing and len(dive.enemies) + len(dive.spawns) > 1
+
+
+
+def test_wisps_shoot_homing_bullets(content):
+    dive = quiet_dive(content)
+    w = put(dive, "wisp", 100, 100)
+    w.speed = 0
+    w.timer = 0
+    run(dive, 0.05)
+    assert dive.bullets and dive.bullets[0].homing > 0
+    b = dive.bullets[0]
+    p = dive.player
+    p.y += 150                                   # ela sai do caminho; o tiro vira atrás
+    angle_before = math.atan2(b.vy, b.vx)
+    run(dive, 0.5)
+    want = math.atan2(p.y - b.y, p.x - b.x)
+    assert abs(math.atan2(b.vy, b.vx) - want) < abs(angle_before - want)
+
+
+def test_no_attack_hack_recharges_in_under_a_second(content):
+    for hid, h in content.hacks.items():
+        if h["kind"] != "movimento":
+            assert h["cooldown"] >= 1.0, hid
+            assert "recarga" in content.hack_trees[hid], hid

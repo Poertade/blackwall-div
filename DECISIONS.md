@@ -172,3 +172,30 @@
   - Com todo ICE precisando cair, o orçamento das ondas caiu de 1,3 para 0,6 por segundo.
   - A RAM de volta subiu de 1,8 para 2,2, porque andar também gasta.
   - O robô (2 carreiras por caminho) vence a primeira camada em ~2 mergulhos e o jogo em 1h45 (Solo e Netwatch) a 2h40 (Equipe; o robô não treina a equipe nem fica parado ganhando a renda).
+
+### 2026-11-08: a segunda rodada de testes
+**O que o usuário pediu, e o que mudou:**
+1. **"O jogo está fácil demais":**
+   - **Os Wisps:** agora atiram em você, com um tiro lento e teleguiado que vira atrás da netrunner (2 rad/s) e dura 4,5 s.
+   - **Os grupos:** chegam com o dobro de ICE de uma vez (o Wisp em grupos de 6 a 10).
+   - **As ondas e as camadas:**
+     - o total de ICE por onda subiu (orçamento de 0,6 para 0,95 por segundo);
+     - a vida dos ICE cresce 16% a cada onda (eram 12%);
+     - as camadas fundas ficaram mais duras (vida ×2,2 / ×4 / ×6,5 / ×9,5 e dano ×1,4 / ×1,9 / ×2,4 / ×3);
+     - cabem até 120 ICE na arena.
+2. **Os ups esperam meio segundo** depois da onda para aparecer. Antes disso, as teclas e os cliques não escolhem nada, para não pegar um up sem querer.
+3. **O movimento é por destino:**
+   - um clique marca o ponto, e a netrunner vai até lá sozinha, gastando a RAM por segundo do Andar (ou do Sandevistan) enquanto anda;
+   - segurar o botão arrasta o destino;
+   - o dash e o teleporte cancelam a caminhada;
+   - um X ciano marca o destino na arena.
+4. **O som que parava e voltava:**
+   - **A causa:** o intervalo mínimo entre dois sons iguais usava o relógio da tela, que zera a cada mergulho, e no esconderijo era sempre 0. Os sons que tinham tocado num mergulho longo ficavam mudos no mergulho seguinte até o relógio novo passar do antigo.
+   - **A correção:** o jogo usa um relógio que nunca volta (`time.monotonic`), e há um teste para isso.
+   - **Os 32 canais** da rodada anterior continuam, mas não eram a causa.
+5. **Nenhum hack de ataque recarrega em menos de 1 s:**
+   - o Short Circuit foi de 0,5 s para 1 s, com o dano de 16 para 22;
+   - os de movimento continuam livres;
+   - toda árvore de hack de ataque ganhou o nó **Recarga** na raiz, sempre visível (-8% por nível, até 5 níveis = -40%), no lugar dos nós de recarga espalhados (Condutor, Ping rápido, Dissipador, Reinício, Pane rápida, Reciclagem, Gatilho e as Recargas).
+
+**O ritmo (o robô, 2 carreiras por caminho):** a primeira camada sai em ~2,5 mergulhos (18 min). O jogo inteiro leva 2h20 no Solo e na Netwatch e 3h na Equipe.

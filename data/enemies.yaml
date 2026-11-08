@@ -3,7 +3,7 @@
 # ai: o comportamento (chase, swarm, ranged, charger, dropper, paralyzer, hacker; veja blackwall/sim/dive.py).
 # kind: ice, netrunner ou ai (o Netdriver da Netwatch bate mais em netrunner e ai).
 # hp, damage (ao encostar) e speed estão no tamanho da 1ª camada; as camadas multiplicam.
-# cost: quanto o inimigo gasta do orçamento da onda. pack: quantos vêm juntos.
+# cost: quanto o inimigo gasta do orçamento da onda. pack: quantos vêm juntos (o dobro desde a 2ª rodada de testes).
 # shape e color: o desenho.
 
 enemies:
@@ -17,9 +17,14 @@ enemies:
     damage: 6
     ed: 1
     cost: 1
-    pack: [3, 5]
+    pack: [6, 10]
     shape: triangle
     color: cyan
+    fire_every: 3.4       # o Wisp também atira: um tiro lento e teleguiado
+    bullet_speed: 140
+    bullet_damage: 4
+    bullet_life: 4.5
+    homing: 2.0           # radianos por segundo que o tiro vira atrás de você
 
   hellhound:
     name: Hellhound
@@ -31,7 +36,7 @@ enemies:
     damage: 10
     ed: 2
     cost: 2.5
-    pack: [1, 2]
+    pack: [2, 4]
     shape: arrow
     color: red
 
@@ -45,7 +50,7 @@ enemies:
     damage: 5
     ed: 2
     cost: 2.5
-    pack: [1, 2]
+    pack: [2, 4]
     shape: diamond
     color: violet
     range: 270
@@ -63,7 +68,7 @@ enemies:
     damage: 18
     ed: 5
     cost: 6
-    pack: [1, 1]
+    pack: [2, 2]
     shape: square
     color: orange
     charge_every: 4
@@ -81,7 +86,7 @@ enemies:
     damage: 7
     ed: 3
     cost: 3
-    pack: [1, 2]
+    pack: [2, 4]
     shape: hex
     color: green
     drop_every: 2.4
@@ -99,7 +104,7 @@ enemies:
     damage: 8
     ed: 3
     cost: 3.5
-    pack: [1, 2]
+    pack: [2, 4]
     shape: star
     color: yellow
     paralyze: 0.6
@@ -114,7 +119,7 @@ enemies:
     damage: 6
     ed: 7
     cost: 6
-    pack: [1, 1]
+    pack: [2, 2]
     shape: ring
     color: blue
     range: 340
@@ -133,7 +138,7 @@ enemies:
     damage: 0
     ed: 6
     cost: 0
-    pack: [1, 1]
+    pack: [2, 2]
     shape: node
     color: red
     spawn_every: 7      # o nó solta um Wisp a cada 7 s (só aparece nas missões de destruir nós)

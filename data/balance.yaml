@@ -32,13 +32,13 @@ waves:
   duration_first: 30       # o tempo em que os ICE da onda vão chegando (a quantidade sai disso)
   duration_step: 1.5
   duration_max: 45
-  budget_base: 0.6          # pontos de ameaça por segundo na primeira onda (todos precisam cair)
-  budget_growth: 1.14       # a cada onda
-  hp_growth: 0.12           # vida dos inimigos +12% a cada onda (dentro da camada)
+  budget_base: 0.95         # pontos de ameaça por segundo na primeira onda (todos precisam cair)
+  budget_growth: 1.15       # a cada onda
+  hp_growth: 0.16           # vida dos inimigos +16% a cada onda (dentro da camada)
   damage_growth: 0.05
   telegraph: 0.8            # o aviso antes de um inimigo aparecer
   spawn_min_distance: 260
-  max_alive: 80
+  max_alive: 120
   boss_budget: 0.45         # na onda do chefe, os outros vêm mais devagar
   reinforce_after: 20       # a onda acaba quando todos os ICE caem; demorando 15 s além da chegada
   reinforce_every: 7        # do último grupo, chegam reforços a cada 7 s

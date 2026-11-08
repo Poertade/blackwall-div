@@ -481,39 +481,51 @@ class Dive:
                 return min(0.85, h["slow"] + self.stats.hack_mod(s.hack, "slow"))
         return 0.0
 
+    def set_destination(self, index, point) -> bool:
+        """Marca o ponto para onde a netrunner vai (com o Andar ou o Sandevistan do slot)."""
+        if not 0 <= index < len(self.slots) or not self.slots[index].hack:
+            return False
+        if self.c.hacks[self.slots[index].hack].get("mode") not in ("walk", "sandevistan"):
+            return False
+        r = self.stats.radius
+        self.player.dest = (min(self.W - r, max(r, point[0])), min(self.H - r, max(r, point[1])))
+        self.player.walker = index
+        return True
+
     def _walk(self, inp, dt):
+        """Segurar o botão (ou a tecla) arrasta o destino; a netrunner anda até ele gastando RAM por segundo."""
         p = self.player
         for index in inp.held:
-            if not 0 <= index < len(self.slots) or not self.slots[index].hack:
-                continue
-            hid = self.slots[index].hack
-            h = self.c.hacks[hid]
-            if h.get("mode") not in ("walk", "sandevistan"):
-                continue
-            dx, dy = inp.aim[0] - p.x, inp.aim[1] - p.y
-            d = math.hypot(dx, dy)
-            if d <= 2:
-                return
-            cost = self.move_cost(hid) * dt
-            if p.ram < cost:
-                self.emit("denied", index, "sem RAM")
-                return
-            p.ram -= cost
-            speed = self.stats.speed * h.get("speed", 1.0) * (1 + self.stats.hack_mod(hid, "speed"))
-            step = min(d, speed * dt)
-            p.x += dx / d * step
-            p.y += dy / d * step
-            p.facing = math.atan2(dy, dx)
-            p.moving = True
-            p.slowmo = h["mode"] == "sandevistan"
+            if self.set_destination(index, inp.aim):
+                break
+        if p.dest is None or p.walker is None or p.walker >= len(self.slots) or not self.slots[p.walker].hack:
             return
+        hid = self.slots[p.walker].hack
+        h = self.c.hacks[hid]
+        dx, dy = p.dest[0] - p.x, p.dest[1] - p.y
+        d = math.hypot(dx, dy)
+        if d <= 2:
+            p.dest = None
+            return
+        cost = self.move_cost(hid) * dt
+        if p.ram < cost:
+            self.emit("denied", p.walker, "sem RAM")
+            return
+        p.ram -= cost
+        speed = self.stats.speed * h.get("speed", 1.0) * (1 + self.stats.hack_mod(hid, "speed"))
+        step = min(d, speed * dt)
+        p.x += dx / d * step
+        p.y += dy / d * step
+        p.facing = math.atan2(dy, dx)
+        p.moving = True
+        p.slowmo = h["mode"] == "sandevistan"
 
     def _move_hack(self, index, hid, h, aim) -> bool:
         """Os movimentos de clique: o Kerenzikov (arrancada) e o Teleporte."""
         p = self.player
         mode = h["mode"]
         if mode in ("walk", "sandevistan"):
-            return False
+            return self.set_destination(index, aim)
         if mode == "dash" and p.rooted > 0:
             self.emit("denied", index, "paralisada")
             return False
@@ -527,6 +539,7 @@ class Dive:
         slot.cooldown = slot.total
         dx, dy = aim[0] - p.x, aim[1] - p.y
         d = math.hypot(dx, dy) or 1.0
+        p.dest = None
         if mode == "dash":
             distance = h["distance"] * (1 + self.stats.hack_mod(hid, "range"))
             speed = distance / h["time"]
@@ -849,8 +862,25 @@ class Dive:
                 best, best_d = o, d
         return best
 
-    def _shoot(self, x, y, angle, speed, damage, color, radius=5.0):
-        self.bullets.append(Bullet(x, y, math.cos(angle) * speed, math.sin(angle) * speed, damage, color, radius))
+    def _shoot(self, x, y, angle, speed, damage, color, radius=5.0, homing=0.0, life=6.0):
+        self.bullets.append(Bullet(x, y, math.cos(angle) * speed, math.sin(angle) * speed, damage, color, radius,
+                                   life, homing))
+
+    def _enemy_fire(self, e, d, dt, blind):
+        """Os ICE que atiram (Raven, Wisp): o tiro sai na direção da netrunner; o do Wisp é teleguiado."""
+        e.timer -= dt
+        if e.timer > 0:
+            return
+        e.timer = d["fire_every"] * self.rng.uniform(0.85, 1.15)
+        p = self.player
+        ang = math.atan2(p.y - e.y, p.x - e.x)
+        homing = d.get("homing", 0.0)
+        if blind:
+            ang += self.rng.uniform(-0.9, 0.9) + (0.5 if self.rng.random() < 0.5 else -0.5)
+            homing = 0.0
+        dmg = d["bullet_damage"] * self.plan.damage * (1 - e.effect("weaken"))
+        self._shoot(e.x, e.y, ang, d["bullet_speed"], dmg, d["color"], 4.0 if homing else 5.0, homing,
+                    d.get("bullet_life", 6.0))
 
     def _update_enemy(self, e, dt):
         e.flash = max(0.0, e.flash - dt)
@@ -941,6 +971,8 @@ class Dive:
                 wob = math.sin(e.phase) * 0.6
                 ang = math.atan2(ty - e.y, tx - e.x) + wob
                 self._move(e, e.x + math.cos(ang) * 50, e.y + math.sin(ang) * 50, speed, dt)
+            if "fire_every" in d:
+                self._enemy_fire(e, d, dt, blind)
         elif ai == "ranged" or ai == "hacker":
             want = d["range"]
             if not rooted:
@@ -952,14 +984,7 @@ class Dive:
                     ang = math.atan2(dpy, dpx) + math.pi / 2 * (1 if e.uid % 2 else -1)
                     self._move(e, e.x + math.cos(ang) * 50, e.y + math.sin(ang) * 50, speed * 0.4, dt)
             if ai == "ranged":
-                e.timer -= dt
-                if e.timer <= 0:
-                    e.timer = d["fire_every"]
-                    ang = math.atan2(dpy, dpx)
-                    if blind:
-                        ang += self.rng.uniform(-0.9, 0.9) + (0.5 if self.rng.random() < 0.5 else -0.5)
-                    dmg = d["bullet_damage"] * self.plan.damage * (1 - e.effect("weaken"))
-                    self._shoot(e.x, e.y, ang, d["bullet_speed"], dmg, d["color"])
+                self._enemy_fire(e, d, dt, blind)
             else:
                 self._update_hacker(e, dt, dp, blind)
         elif ai == "charger":
@@ -1166,6 +1191,15 @@ class Dive:
         pr = self.stats.radius
         keep = []
         for b in self.bullets:
+            if b.homing:
+                # vira aos poucos na direção da netrunner (no máximo `homing` radianos por segundo)
+                want = math.atan2(p.y - b.y, p.x - b.x)
+                cur = math.atan2(b.vy, b.vx)
+                diff = (want - cur + math.pi) % TAU - math.pi
+                turn = max(-b.homing * dt, min(b.homing * dt, diff))
+                speed = math.hypot(b.vx, b.vy)
+                b.vx = math.cos(cur + turn) * speed
+                b.vy = math.sin(cur + turn) * speed
             b.x += b.vx * dt
             b.y += b.vy * dt
             b.life -= dt

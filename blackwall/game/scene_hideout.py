@@ -250,7 +250,7 @@ class HideoutScene:
             col = T.color(self.c.hacks[hid]["color"]) if hid else T.FAINT
             r = ui.chip(surf, (xx, yy + 28), label, col, 15)
             xx = r.right + 8
-        gfx.text(surf, "O botão esquerdo usa o hack de movimento · teclas 1 a 7 lançam os hacks no ICE sob o cursor · "
+        gfx.text(surf, "Clique para marcar o destino · teclas 1 a 7 lançam os hacks no ICE sob o cursor · "
                        "Esc pausa · Tab mostra a build", (x0, yy + 64), 15, T.DIM)
 
     # --- CYBERDECK -----------------------------------------------------------

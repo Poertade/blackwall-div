@@ -13,7 +13,7 @@ def dist(ax, ay, bx, by) -> float:
 
 class Player:
     __slots__ = ("x", "y", "hp", "ram", "invulnerable", "rooted", "root_immune", "moving", "facing", "dash_t",
-                 "dash_v", "slowmo")
+                 "dash_v", "slowmo", "dest", "walker")
 
     def __init__(self, x, y, hp, ram):
         self.x = x
@@ -28,6 +28,8 @@ class Player:
         self.dash_t = 0.0        # o Kerenzikov em andamento
         self.dash_v = (0.0, 0.0)
         self.slowmo = False      # o Sandevistan ligado neste passo
+        self.dest = None         # o ponto marcado (a netrunner anda até lá sozinha)
+        self.walker = None       # o slot do hack que anda (Andar ou Sandevistan)
 
 
 class Slot:
@@ -92,9 +94,9 @@ class Enemy:
 
 
 class Bullet:
-    __slots__ = ("x", "y", "vx", "vy", "radius", "damage", "life", "color")
+    __slots__ = ("x", "y", "vx", "vy", "radius", "damage", "life", "color", "homing")
 
-    def __init__(self, x, y, vx, vy, damage, color, radius=5.0, life=6.0):
+    def __init__(self, x, y, vx, vy, damage, color, radius=5.0, life=6.0, homing=0.0):
         self.x = x
         self.y = y
         self.vx = vx
@@ -103,6 +105,7 @@ class Bullet:
         self.damage = damage
         self.life = life
         self.color = color
+        self.homing = homing     # radianos por segundo que o tiro vira atrás da netrunner (0 = reto)
 
 
 class Zone:

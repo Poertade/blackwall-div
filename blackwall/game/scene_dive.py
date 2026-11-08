@@ -81,13 +81,15 @@ class DiveScene:
             index = KEYS.index(key) if key in KEYS else (KEYPAD.index(key) if key in KEYPAD else None)
             if d.phase == "wave" and index is not None:
                 self.queue.append(index)
-            elif d.phase == "choice":
+            elif d.phase == "choice" and self.choice_ready():
                 if index is not None and index < len(d.offer):
                     self.pick(index)
                 elif key == pygame.K_r:
                     self.reroll()
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.paused or d.phase != "wave":
+                if d.phase == "choice" and not self.choice_ready():
+                    return
                 if self.clicks.click(self.app.logical(event.pos)):
                     self.app.audio.play("click")
             else:
@@ -143,9 +145,15 @@ class DiveScene:
             self.app.save()
 
     # --- tempo ---------------------------------------------------------------
+    UPS_DELAY = 0.5      # os ups só aparecem meio segundo depois da onda (para não clicar sem querer)
+
+    def choice_ready(self) -> bool:
+        return getattr(self, "choice_t", 0.0) >= self.UPS_DELAY
+
     def update(self, dt):
         self.t += dt
         d = self.dive
+        self.choice_t = getattr(self, "choice_t", 0.0) + dt if d.phase == "choice" else 0.0
         self.fx.update(dt)
         self.bg.update(dt)
         pygame.mouse.set_visible(self.paused or d.phase != "wave")
@@ -194,6 +202,11 @@ class DiveScene:
         self.draw_player(surf, glow, ox, oy)
         for b in d.bullets:
             c = T.color(b.color)
+            if b.homing:
+                # o tiro teleguiado deixa um rastro curto
+                speed = math.hypot(b.vx, b.vy) or 1.0
+                tail = (b.x + ox - b.vx / speed * 12, b.y + oy - b.vy / speed * 12)
+                gfx.line(surf, glow, T.scale(c, 0.6), tail, (b.x + ox, b.y + oy), 2)
             gfx.circle(surf, glow, c, (int(b.x + ox), int(b.y + oy)), b.radius)
             pygame.draw.circle(surf, (255, 255, 255), (int(b.x + ox), int(b.y + oy)), max(1, int(b.radius) - 3))
         self.fx.draw_world(surf, glow, ox, oy)
@@ -212,7 +225,7 @@ class DiveScene:
             self.draw_cursor(surf, glow)
         if self.show_build and d.phase == "wave":
             self.draw_build(surf, glow, (T.W - 470, 70))
-        if d.phase == "choice":
+        if d.phase == "choice" and self.choice_ready():
             self.draw_choice(surf, glow)
         elif d.phase == "over":
             self.draw_over(surf, glow)
@@ -323,6 +336,13 @@ class DiveScene:
         gfx.circle(surf, glow, (255, 255, 255), (int(x), int(y)), 4)
         if p.rooted > 0:
             gfx.circle(surf, glow, T.YELLOW, (int(x), int(y)), r + 12, 2)
+        if p.dest is not None:
+            dx, dy = p.dest[0] + ox, p.dest[1] + oy
+            k = 6 + 3 * math.sin(self.t * 8)
+            pygame.draw.line(surf, T.scale(T.CYAN, 0.35), (x, y), (dx, dy), 1)
+            gfx.line(surf, glow, T.CYAN, (dx - k, dy - k), (dx + k, dy + k), 2)
+            gfx.line(surf, glow, T.CYAN, (dx - k, dy + k), (dx + k, dy - k), 2)
+            pygame.draw.circle(surf, T.CYAN, (int(dx), int(dy)), 11, 1)
         if d.auto == "controle":
             radius = self.c.builds["controle"]["auto"]["radius"]
             gfx.alpha_circle(surf, T.COLORS["violet"], (x, y), radius, 18)
@@ -688,7 +708,7 @@ class DiveScene:
         loss = int(self.dive.ed * self.c.balance["flatline_ed_loss"])
         ui.button(surf, self.clicks, (T.W / 2 - 160, 350, 320, 56), "CORTAR A CONEXÃO", self.abort, mouse,
                   col=T.RED, size=18, sub=f"perde {gfx.fmt(loss)} Ed")
-        gfx.text(surf, "O botão esquerdo usa o hack de movimento. Teclas 1 a 7 lançam os hacks no ICE sob o cursor.",
+        gfx.text(surf, "Clique com o botão esquerdo para marcar o destino. Teclas 1 a 7 lançam os hacks no ICE sob o cursor.",
                  (T.W / 2, 450), 16, T.DIM, anchor="center")
         gfx.text(surf, "TAB mostra a build. F11 alterna a tela cheia. F2 liga e desliga os efeitos, F3 a música.",
                  (T.W / 2, 474), 16, T.DIM, anchor="center")

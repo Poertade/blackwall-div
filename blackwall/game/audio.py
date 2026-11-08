@@ -4,6 +4,7 @@ Se o computador não tiver som (ou o mixer falhar), o jogo segue mudo."""
 
 import math
 import random
+import time
 from array import array
 
 import pygame
@@ -113,11 +114,16 @@ class Audio:
                 self.sounds[name] = None
         return self.sounds[name]
 
-    def play(self, name, now=0.0):
+    def play(self, name, now=None):
+        """Toca um efeito. O intervalo mínimo entre dois iguais usa um relógio que nunca volta.
+
+        (Antes usava o relógio da tela, que zera a cada mergulho: os sons que tinham tocado no mergulho
+        anterior ficavam mudos até o relógio novo passar do antigo. O `now` fica só por compatibilidade.)"""
         if not self.ok or self.volume <= 0:
-            return
-        if now - self.cooldown.get(name, -1) < 0.04:
-            return
+            return False
+        now = time.monotonic()
+        if now - self.cooldown.get(name, -1.0) < 0.04:
+            return False
         self.cooldown[name] = now
         sound = self._get(name)
         if sound is not None:
@@ -125,3 +131,5 @@ class Audio:
             channel = pygame.mixer.find_channel(name in IMPORTANT)
             if channel is not None:
                 channel.play(sound)
+                return True
+        return False

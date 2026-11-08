@@ -24,8 +24,8 @@ O jogo salva sozinho (depois de cada mergulho e de cada compra) em `%APPDATA%\Bl
 
 | | |
 |---|---|
-| **Botão esquerdo** | o hack de movimento do deck: segurar anda (Andar, Sandevistan), clicar dá o dash ou o teleporte |
-| **Teclas 1 a 7** | lançam o quickhack daquele slot no ICE sob o cursor (a mira escolhe o mais perto); a tecla do movimento também anda |
+| **Botão esquerdo** | o hack de movimento do deck: um clique marca o destino e a netrunner vai até lá sozinha (Andar, Sandevistan); segurar arrasta o destino; com o Kerenzikov ou o Teleporte, o clique dá o dash ou o teleporte |
+| **Teclas 1 a 7** | lançam o quickhack daquele slot no ICE sob o cursor (a mira escolhe o mais perto); a tecla do movimento também marca o destino |
 | **Botão direito** | o primeiro hack de ataque do deck |
 | **Tab** | mostra a build: as tags, os bônus e o ataque automático |
 | **Esc** | pausa |
@@ -38,10 +38,10 @@ O jogo salva sozinho (depois de cada mergulho e de cada compra) em `%APPDATA%\Bl
 - **O mergulho:** cada camada tem 10 ondas, com um chefe na 10ª.
   - **As ondas:** cada uma tem uma quantidade fixa de ICE, que chegam em grupos, e só acaba quando todos caem. O HUD mostra quantos faltam. Se a onda demorar, chegam reforços.
   - **O movimento é um quickhack:** ocupa um slot e gasta RAM. Há quatro:
-    - **Andar:** segurar; pouca RAM por segundo;
+    - **Andar:** marque o destino e ela vai; pouca RAM por segundo enquanto anda;
     - **Kerenzikov:** arrancada invulnerável;
     - **Teleporte:** some e reaparece no cursor, empurrando os ICE; funciona até paralisada;
-    - **Sandevistan:** segurar; corre com o tempo lento em volta, gastando muita RAM.
+    - **Sandevistan:** como o Andar, mas corre com o tempo lento em volta, gastando muita RAM.
   - **Integridade:** a vida. Zerou, é **flatline**: você volta com 75% do Ed do mergulho.
   - **RAM:** os hacks gastam RAM, que volta com o tempo.
   - **Ed:** cai dos ICE e é recolhido ao passar perto.

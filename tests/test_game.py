@@ -69,6 +69,10 @@ def test_a_dive_plays_offers_ups_and_returns_to_the_hideout(app):
     scene.dive.spawns.clear()
     frames(app, 2)
     assert scene.dive.phase == "choice"
+    key(app, pygame.K_1)              # cedo demais: os ups ainda não apareceram
+    frames(app, 2)
+    assert scene.dive.phase == "choice" and not scene.choice_ready()
+    frames(app, 35)                   # passou meio segundo
     key(app, pygame.K_1)
     frames(app, 2)
     assert scene.dive.wave == 2 and sum(scene.dive.taken.values()) == 1
@@ -166,3 +170,14 @@ def test_f3_mutes_only_the_music(app):
 
 def test_screen_is_the_logical_size(app):
     assert app.screen.get_size() == (T.W, T.H)
+
+
+def test_sounds_are_not_muted_by_a_previous_dive(app):
+    import time
+    audio = app.audio
+    if not audio.ok:
+        return
+    audio.volume = 0.5
+    assert audio.play("hit", 900.0)        # um som no fim de um mergulho longo (relógio da tela em 900 s)
+    time.sleep(0.05)
+    assert audio.play("hit", 0.0)          # o mergulho seguinte começa com o relógio da tela em 0

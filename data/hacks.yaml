@@ -11,10 +11,10 @@ short_circuit:
   tags: [sobrecarga, cadeia]
   color: cyan
   ram: 2
-  cooldown: 0.5
+  cooldown: 1.0           # nenhum hack de ataque recarrega em menos de 1 s (a árvore e os ups reduzem)
   upload: 0.15
   target: enemy
-  damage: 16
+  damage: 22
   jumps: 0
   jump_range: 170
   falloff: 0.8            # cada salto leva 80% do dano do anterior
