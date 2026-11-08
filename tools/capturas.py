@@ -86,10 +86,24 @@ def main():
     p.decks += ["biotech", "raven"]
     pf.set_deck(p, c, "raven")
     p.loadout = ["short_circuit", "contagion", "overheat", "sonic_shock"]
-    for tab in ("mergulho", "deck", "loja", "arvore"):
+    from blackwall.meta import story
+    p.quest["read"] = []
+    app.switch(HideoutScene(app, tab="historia"))
+    pygame.mouse.set_pos((900, 360))
+    shot(app, out / "historia-encruzilhada.png")
+    pf.choose_path(p, c, "equipe")
+    story.quest(p)["team"]["ruido"] = 2
+    for tab in ("mergulho", "historia", "deck", "loja", "arvore"):
         app.switch(HideoutScene(app, tab=tab))
         pygame.mouse.set_pos((300, 200) if tab != "arvore" else (240, 260))
         shot(app, out / f"esconderijo-{tab}.png")
+    # uma missão da equipe: o download
+    scene = DiveScene(app, pf.dive_config(p, c, "mission", seed=5, mission=c.mission("equipe_1")),
+                      c.mission("equipe_1")["name"])
+    app.switch(scene)
+    scene.dive.start_wave(3)
+    play(app, scene, 14)
+    shot(app, out / "missao-download.png")
     # uma onda no meio
     scene = DiveScene(app, pf.dive_config(p, c, "layer", 0, seed=11), c.layers[0]["name"])
     app.switch(scene)

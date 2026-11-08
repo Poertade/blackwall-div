@@ -6,6 +6,7 @@ Sem tela: a interface chama estas funções, e os testes também. O salvamento e
 import time
 from dataclasses import dataclass, field
 
+from blackwall.meta import story
 from blackwall.sim.dive import DiveConfig
 from blackwall.sim.stats import Mods
 
@@ -164,23 +165,41 @@ def permanent_mods(profile: Profile, content) -> Mods:
 
 
 def available_layers(profile: Profile, content) -> int:
-    """Quantas camadas dá para mergulhar (as vencidas e a próxima)."""
+    """Quantas camadas dá para mergulhar (as vencidas e a próxima).
+
+    Depois da 1ª camada, a 2ª só abre quando você escolhe o caminho (aba HISTÓRIA)."""
+    if profile.path is None:
+        return 1
     return min(len(content.layers), profile.layers_cleared + 1)
+
+
+def choose_path(profile: Profile, content, path: str) -> bool:
+    if not story.choose_path(profile, content, path):
+        return False
+    deck = content.story.get("path_decks", {}).get(path)
+    if deck and deck not in profile.decks:
+        profile.decks.append(deck)
+        set_deck(profile, content, deck)
+    return True
 
 
 def infinite_unlocked(profile: Profile) -> bool:
     return profile.layers_cleared >= 1
 
 
-def dive_config(profile: Profile, content, mode: str = "layer", layer: int = 0, seed: int | None = None):
+def dive_config(profile: Profile, content, mode: str = "layer", layer: int = 0, seed: int | None = None,
+                mission: dict | None = None):
     return DiveConfig(
         mode=mode,
-        layer=layer,
+        layer=mission["layer"] if mission else layer,
         loadout=list(profile.loadout),
         deck=profile.deck,
         mods=permanent_mods(profile, content),
         seed=seed if seed is not None else int(time.time() * 1000) % 2_000_000_000,
         choices=4 if profile.path == "solo" else 0,
+        mission=mission,
+        allies=story.allies_for_dive(profile, content),
+        ally_pickup=content.story["income"]["pickup"] if profile.path == "equipe" else 0.0,
     )
 
 
@@ -188,7 +207,8 @@ def apply_result(profile: Profile, content, dive) -> dict:
     """Leva o resultado do mergulho para o esconderijo. Devolve o resumo para a tela."""
     gained = dive.ed_final
     summary = {"result": dive.result, "ed": gained, "lost": int(dive.ed) - gained, "wave": dive.wave,
-               "kills": dive.kills, "unlocked": [], "reward_ed": 0, "reward_hack": None, "record": False}
+               "kills": dive.kills, "unlocked": [], "reward_ed": 0, "reward_hack": None, "record": False,
+               "reward_deck": None, "reward_ally": None, "ending": None, "mission": None}
     profile.ed += gained
     profile.stats["dives"] += 1
     profile.stats["kills"] += dive.kills
@@ -196,7 +216,15 @@ def apply_result(profile: Profile, content, dive) -> dict:
     if dive.result == "flatline":
         profile.stats["flatlines"] += 1
     cfg = dive.cfg
-    if cfg.mode == "infinite":
+    if cfg.mode == "mission":
+        summary["mission"] = cfg.mission["id"]
+        if dive.result == "victory":
+            reward = story.mission_reward(profile, content, cfg.mission)
+            summary["reward_ed"] = reward["ed"]
+            summary["reward_hack"] = reward["hack"]
+            summary["reward_deck"] = reward["deck"]
+            summary["reward_ally"] = reward["ally"]
+    elif cfg.mode == "infinite":
         reached = dive.waves_cleared
         if reached > profile.best_infinite:
             profile.best_infinite = reached
@@ -222,4 +250,8 @@ def apply_result(profile: Profile, content, dive) -> dict:
                 summary["unlocked"].append(content.layers[profile.layers_cleared]["name"])
             if profile.layers_cleared == 1:
                 summary["unlocked"].append("Ondas infinitas")
+                summary["unlocked"].append("A escolha do caminho (aba HISTÓRIA)")
+            if profile.layers_cleared == len(content.layers) and profile.path:
+                story.quest(profile)["ending"] = profile.path
+                summary["ending"] = profile.path
     return summary

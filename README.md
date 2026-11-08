@@ -54,8 +54,34 @@ O jogo salva sozinho (depois de cada mergulho e de cada compra) em `%APPDATA%\Bl
   4. os arredores da Blackwall (Giant);
   5. o outro lado (a IA renegada).
 - **As ondas infinitas:** liberadas depois da 1ª camada. O recorde fica guardado.
+- **A história (aba HISTÓRIA):** a Rhyme, fixer de Watson, dá o primeiro serviço. Depois da 1ª camada, ela traz dois convites, e você escolhe um dos três caminhos. A escolha vale uma vez por salvamento, para sempre, e só depois dela a 2ª camada abre.
+  - **Solo:**
+    - +25% de dano e +20 de Integridade;
+    - 4 opções de up em vez de 3;
+    - o Lobo solitário: cada onda sem levar dano dá +5% de dano até o fim do mergulho.
+  - **Equipe netrunner:**
+    - Juno Takeda mergulha com você; Bento "Ruído" Okafor e Mira Solano entram pelas missões;
+    - cada um lança hacks sozinho (dano, controle e suporte) e recolhe o Ed que cai perto;
+    - fora do mergulho, inclusive com o jogo fechado (até 12 horas), a equipe rende Ed por hora;
+    - os membros sobem de nível com Ed.
+  - **Netwatch:**
+    - o Agente Varga mergulha com você;
+    - o Netdriver MK.5 tem 6 slots;
+    - +12% de dano, +10 de Integridade e um salário por hora menor que a renda da equipe;
+    - as missões caçam IAs e os Voodoo Boys.
+  - **As missões:** três por caminho, de 5 a 7 ondas, cada uma com um objetivo:
+    - aguentar até a extração;
+    - proteger o download;
+    - escoltar um programa;
+    - destruir os nós;
+    - caçar um alvo.
 
-O desenho completo, com o que ainda vem (a quest line com os três caminhos, as missões da história e a renda da equipe), está em [docs/GDD.md](docs/GDD.md). As decisões e os números estão em [DECISIONS.md](DECISIONS.md).
+    Elas pagam Ed, quickhacks e membros da equipe.
+  - **O fim:** a voz do outro lado da Blackwall fala com você nas camadas fundas. Cada caminho tem um final, e depois dele o jogo continua.
+
+O desenho completo está em [docs/GDD.md](docs/GDD.md). As decisões e os números estão em [DECISIONS.md](DECISIONS.md).
+
+![A encruzilhada](docs/capturas/historia-encruzilhada.png)
 
 ## Para desenvolver
 
@@ -70,8 +96,9 @@ blackwall/
     stats.py          os números da netrunner
     waves.py          o plano de cada onda
   meta/               o esconderijo: perfil, árvore, loja, decks, salvamento
+    story.py          a quest line: falas, caminho, missões, equipe, renda
   game/               a tela em pygame: neon com brilho, efeitos, sons sintetizados
-data/                 o conteúdo: hacks, ups, builds, inimigos, camadas, decks, árvore e os números
+data/                 o conteúdo: hacks, ups, builds, inimigos, camadas, decks, árvore, história e os números
 tests/                pytest (as regras e a interface sem janela)
 tools/
   simular.py          o robô de balanceamento
@@ -92,7 +119,7 @@ python -m pytest -q tests
 O robô de balanceamento joga carreiras inteiras e mede quantos mergulhos e minutos cada camada leva:
 
 ```bash
-python tools/simular.py 3
+python tools/simular.py 3 --caminho=equipe
 ```
 
 Para gerar o executável localmente:

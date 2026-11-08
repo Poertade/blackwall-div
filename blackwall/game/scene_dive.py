@@ -15,6 +15,7 @@ STEP = 1 / 60
 KEYS = [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6]
 KEYPAD = [pygame.K_KP1, pygame.K_KP2, pygame.K_KP3, pygame.K_KP4, pygame.K_KP5, pygame.K_KP6]
 RESULTS = {
+    "failed": ("MISSÃO FALHOU", T.RED),
     "victory": ("CAMADA VENCIDA", T.YELLOW),
     "flatline": ("FLATLINE", T.RED),
     "extracted": ("DESCONECTADA", T.CYAN),
@@ -104,7 +105,10 @@ class DiveScene:
         self.finish()
         pygame.mouse.set_visible(True)
         from blackwall.game.scene_hideout import HideoutScene
-        self.app.switch(HideoutScene(self.app, last=self.summary))
+        s = self.summary or {}
+        story_news = s.get("ending") or s.get("reward_ally") or s.get("mission") or (
+            self.dive.cfg.mode == "layer" and s.get("result") == "victory" and self.app.profile.layers_cleared == 1)
+        self.app.switch(HideoutScene(self.app, last=self.summary, tab="historia" if story_news else "mergulho"))
 
     def finish(self):
         if self.summary is None:
@@ -156,8 +160,10 @@ class DiveScene:
         self.draw_spawns(surf, glow, ox, oy)
         self.draw_pickups(surf, glow, ox, oy)
         self.draw_uploads(surf, glow, ox, oy)
+        self.draw_objective(surf, glow, ox, oy)
         for e in d.enemies:
             self.draw_enemy(surf, glow, e, ox, oy)
+        self.draw_allies(surf, glow, ox, oy)
         self.draw_player(surf, glow, ox, oy)
         for b in d.bullets:
             c = T.color(b.color)
@@ -231,6 +237,35 @@ class DiveScene:
             pygame.draw.arc(surf, col, rect, math.pi / 2, math.pi / 2 + math.tau * k, 3)
             pygame.draw.arc(glow.surface, col, rect, math.pi / 2, math.pi / 2 + math.tau * k, 5)
 
+    def draw_objective(self, surf, glow, ox, oy):
+        node = self.dive.node
+        if node is None:
+            return
+        x, y = node.x + ox, node.y + oy
+        col = T.COLORS["green"] if node.hp > node.max_hp * 0.35 else T.RED
+        if node.moving:
+            pts = [(x + 26, y), (x - 14, y - 18), (x - 6, y), (x - 14, y + 18)]
+            gfx.poly(surf, glow, col, pts, 2, fill=T.scale(col, 0.2))
+            label = "PROGRAMA"
+        else:
+            gfx.poly(surf, glow, col, gfx.regular((x, y), node.radius, 6, self.t * 0.4), 2, fill=T.scale(col, 0.2))
+            k = self.dive.mission_progress()
+            rect = pygame.Rect(x - 34, y - 34, 68, 68)
+            pygame.draw.arc(surf, T.CYAN, rect, math.pi / 2, math.pi / 2 + math.tau * k, 3)
+            pygame.draw.arc(glow.surface, T.CYAN, rect, math.pi / 2, math.pi / 2 + math.tau * k, 5)
+            label = f"DOWNLOAD {int(k * 100)}%"
+        gfx.bar(surf, (x - 30, y - 50, 60, 5), node.hp / node.max_hp, col, back=(40, 20, 25))
+        gfx.text(surf, label, (x, y + 30), 13, col, "bold", anchor="midtop")
+
+    def draw_allies(self, surf, glow, ox, oy):
+        for a in self.dive.allies:
+            x, y = a.x + ox, a.y + oy
+            col = T.color(a.d["color"])
+            gfx.poly(surf, glow, col, gfx.regular((x, y), 9, 4, self.t * 2 + a.slot), 2, fill=T.scale(col, 0.25))
+            gfx.text(surf, a.d["name"].replace('"', "").split()[0][0], (x, y - 1), 12, T.TEXT, "bold", anchor="center")
+            if a.flash > 0:
+                pygame.draw.circle(surf, col, (int(x), int(y)), int(14 + (0.3 - a.flash) * 40), 1)
+
     def draw_player(self, surf, glow, ox, oy):
         d = self.dive
         p = d.player
@@ -288,6 +323,10 @@ class DiveScene:
             gfx.poly(surf, glow, col, gfx.regular((x, y), r, 6, self.t * 0.5), 2, fill)
         elif shape == "star":
             gfx.poly(surf, glow, col, gfx.star((x, y), r * 1.3, r * 0.55, 4, ang), 2, fill)
+        elif shape == "node":
+            gfx.poly(surf, glow, col, gfx.regular((x, y), r * 1.3, 4, math.pi / 4), 2, fill)
+            pygame.draw.arc(surf, col, (x - r - 8, y - r - 8, (r + 8) * 2, (r + 8) * 2), -self.t * 2, -self.t * 2 + 3, 2)
+            gfx.circle(surf, glow, col, (int(x), int(y)), 4 + 2 * math.sin(self.t * 5))
         elif shape == "ring":
             gfx.circle(surf, glow, col, (int(x), int(y)), r, 2)
             gfx.circle(surf, glow, col, (int(x), int(y)), r * 0.4)
@@ -386,9 +425,11 @@ class DiveScene:
         layer = self.c.layers[d.plan.layer]
         # topo
         gfx.text(surf, self.title.upper(), (20, 10), 22, T.color(layer["color"]), "title")
-        gfx.text(surf, layer["sub"], (20, 34), 15, T.DIM)
+        gfx.text(surf, self.objective_text() or layer["sub"], (20, 34), 15, T.YELLOW if d.mission else T.DIM)
         if d.cfg.mode == "infinite":
             wave = f"ONDA {d.wave}"
+        elif d.mission:
+            wave = f"ONDA {d.wave}/{d.mission['waves']}"
         else:
             wave = f"ONDA {d.plan.in_layer}/{self.c.balance['waves']['per_layer']}"
         gfx.text(surf, wave, (T.W / 2, 6), 30, T.TEXT, "title", anchor="midtop", glow=glow)
@@ -442,6 +483,22 @@ class DiveScene:
                     pygame.draw.rect(glow.surface, col, rect)
         # os slots
         self.draw_slots(surf, glow, base_y)
+
+    def objective_text(self):
+        d = self.dive
+        if not d.mission:
+            return None
+        kind = d.objective["type"]
+        if kind == "download":
+            return f"Proteja o download: {int(d.mission_progress() * 100)}%"
+        if kind == "escort":
+            return f"Escolte o programa: {int(d.mission_progress() * 100)}%"
+        if kind == "nodes":
+            return f"Destrua os nós: {d.nodes_left()} restando"
+        if kind == "hunt":
+            name = self.c.bosses[d.objective["target"]]["name"]
+            return f"Cace {name}: ele aparece na onda {d.mission['waves']}"
+        return f"Aguente até a extração: onda {d.wave} de {d.mission['waves']}"
 
     def draw_slots(self, surf, glow, base_y):
         d = self.dive
@@ -600,10 +657,14 @@ class DiveScene:
         self._dim(surf, 200, glow)
         mouse = self.app.mouse()
         title, col = RESULTS.get(d.result, ("FIM", T.TEXT))
+        if d.mission and d.result == "victory":
+            title = "MISSÃO CUMPRIDA"
         gfx.text(surf, title, (T.W / 2, 150), 64, col, "title", anchor="center", glow=glow)
         lines = []
         if d.cfg.mode == "infinite":
             lines.append(f"Ondas vencidas: {d.waves_cleared}" + ("   (novo recorde!)" if s.get("record") else ""))
+        elif d.mission:
+            lines.append(f"{d.mission['name']}: {d.waves_cleared} de {d.mission['waves']} ondas")
         else:
             lines.append(f"Ondas vencidas: {d.waves_cleared} de {self.c.balance['waves']['per_layer']}")
         lines.append(f"ICE derrubados: {gfx.fmt(d.kills)}")
@@ -612,7 +673,14 @@ class DiveScene:
             ed += f"   (perdeu {gfx.fmt(s['lost'])})"
         lines.append(ed)
         if s.get("reward_ed"):
-            lines.append(f"Pagamento da camada: {gfx.fmt(s['reward_ed'])} Ed")
+            what = "da missão" if d.mission else "da camada"
+            lines.append(f"Pagamento {what}: {gfx.fmt(s['reward_ed'])} Ed")
+        if s.get("reward_deck"):
+            lines.append(f"Cyberdeck novo: {self.c.decks[s['reward_deck']]['name']}")
+        if s.get("reward_ally"):
+            lines.append(f"{self.c.story['allies'][s['reward_ally']]['name']} entrou para a equipe")
+        if s.get("ending"):
+            lines.append("A Blackwall caiu. O final está na aba HISTÓRIA.")
         if s.get("reward_hack"):
             lines.append(f"Quickhack novo: {self.c.hacks[s['reward_hack']]['name']}")
         for u in s.get("unlocked", []):

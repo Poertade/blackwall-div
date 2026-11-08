@@ -156,3 +156,34 @@ class Spawn:
         self.t = 0.0
         self.total = total
         self.boss = boss
+
+
+class ObjectiveNode:
+    """O nó do download (parado) ou o programa da escolta (andando): os ICE tentam derrubá-lo."""
+
+    __slots__ = ("x", "y", "hp", "max_hp", "radius", "speed", "moving")
+
+    def __init__(self, x, y, hp, speed=0.0):
+        self.x = x
+        self.y = y
+        self.hp = hp
+        self.max_hp = hp
+        self.radius = 22.0
+        self.speed = speed
+        self.moving = speed > 0
+
+
+class Ally:
+    """Um runner da equipe (ou o agente da Netwatch) mergulhando junto."""
+
+    __slots__ = ("id", "d", "level", "x", "y", "timer", "slot", "flash")
+
+    def __init__(self, ally_id, d, level, x, y, slot):
+        self.id = ally_id
+        self.d = d
+        self.level = level
+        self.x = x
+        self.y = y
+        self.timer = d["every"] * 0.5
+        self.slot = slot
+        self.flash = 0.0

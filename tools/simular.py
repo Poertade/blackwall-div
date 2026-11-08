@@ -1,6 +1,6 @@
 """O robô de balanceamento: joga uma carreira inteira e mede o ritmo.
 
-    python tools/simular.py [carreiras] [--detalhes]
+    python tools/simular.py [carreiras] [--detalhes] [--caminho=solo|equipe|netwatch]
 
 Cada carreira começa do zero. O robô mergulha na camada mais funda que ainda não venceu, joga com uma
 estratégia simples (foge do ICE mais perto, lança o hack pronto no melhor alvo), volta, gasta o Ed
@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT))
 
 from blackwall.content import load  # noqa: E402
 from blackwall.meta import profile as pf  # noqa: E402
+from blackwall.meta import story  # noqa: E402
 from blackwall.sim.dive import Dive, DiveInput  # noqa: E402
 
 STEP = 1 / 30
@@ -164,7 +165,7 @@ def spend(profile, content):
             return
 
 
-def career(content, seed, details=False, max_dives=120):
+def career(content, seed, details=False, max_dives=120, path="solo"):
     profile = pf.new_profile(content)
     minutes = 0.0
     marks = []
@@ -181,6 +182,8 @@ def career(content, seed, details=False, max_dives=120):
                   f"deck {profile.deck} {profile.loadout}")
         if profile.layers_cleared > layer:
             marks.append((profile.layers_cleared, dives, minutes))
+        if story.needs_path_choice(profile):
+            pf.choose_path(profile, content, path)
         spend(profile, content)
         arrange(profile, content)
     return marks, dives, minutes
@@ -190,12 +193,13 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     runs = int(args[0]) if args else 3
     details = "--detalhes" in sys.argv
+    path = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--caminho=")), "solo")
     content = load()
     table = {}
     for seed in range(1, runs + 1):
         if details:
             print(f"carreira {seed}")
-        marks, dives, minutes = career(content, seed, details)
+        marks, dives, minutes = career(content, seed, details, path=path)
         for layer, d, m in marks:
             table.setdefault(layer, []).append((d, m))
         print(f"carreira {seed}: {len(marks)} camadas em {dives} mergulhos, {minutes:.0f} min")

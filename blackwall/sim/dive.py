@@ -12,7 +12,8 @@ from dataclasses import dataclass, field
 from random import Random
 
 from blackwall.sim import build, hacks, waves
-from blackwall.sim.entities import Bullet, Enemy, Pickup, Player, Slot, Spawn, Upload, Zone, dist2
+from blackwall.sim.entities import (Ally, Bullet, Enemy, ObjectiveNode, Pickup, Player, Slot, Spawn, Upload, Zone,
+                                    dist2)
 from blackwall.sim.stats import Mods, Stats
 
 TAU = math.tau
@@ -27,6 +28,9 @@ class DiveConfig:
     mods: Mods = field(default_factory=Mods)   # árvore + deck + caminho da história
     seed: int = 1
     choices: int = 0                    # quantos ups por escolha (0 = o do balance.yaml)
+    mission: dict | None = None         # mode "mission": a missão da história (data/story.yaml)
+    allies: list = field(default_factory=list)   # [(id do aliado, nível)]
+    ally_pickup: float = 0.0            # a equipe recolhe o Ed que cai perto de cada aliado
 
 
 @dataclass
@@ -81,6 +85,30 @@ class Dive:
         self.trail_from = (self.player.x, self.player.y)
         self.lifesteal_left = 0.0
         self.waves_cleared = 0
+        # a missão da história
+        self.mission = config.mission
+        self.objective = (config.mission or {}).get("objective", {})
+        self.node = None
+        self.nodes_warned = False
+        self.mission_time = 0.0
+        self.mission_total = 0.0
+        if self.mission:
+            self.mission_total = sum(waves.plan(content, "mission", 0, n, self.mission).duration
+                                     for n in range(1, self.mission["waves"] + 1))
+            kind = self.objective["type"]
+            if kind == "download":
+                self.node = ObjectiveNode(self.W / 2, self.H / 2, self.objective["hp"])
+                self.player.y = self.H / 2 + 90
+            elif kind == "escort":
+                speed = (self.W - 140) / max(1.0, self.mission_total)
+                self.node = ObjectiveNode(70, self.H / 2, self.objective["hp"], speed)
+        # os aliados
+        allies_data = content.story.get("allies", {})
+        self.allies = []
+        for i, (ally_id, level) in enumerate(config.allies):
+            angle = TAU * i / max(1, len(config.allies))
+            self.allies.append(Ally(ally_id, allies_data[ally_id], level, self.player.x + math.cos(angle) * 50,
+                                    self.player.y + math.sin(angle) * 50, i))
         self.start_wave(1)
 
     # --- números e eventos ---------------------------------------------------
@@ -113,12 +141,13 @@ class Dive:
         """O Ed que volta para o esconderijo (o flatline perde uma parte)."""
         if self.result in ("flatline", "aborted"):
             return int(self.ed * (1 - self.bal["flatline_ed_loss"]))
+        # "failed": a missão falhou (o nó caiu), mas você não: volta com tudo
         return int(self.ed)
 
     # --- as ondas ------------------------------------------------------------
     def start_wave(self, number: int):
         self.wave = number
-        self.plan = waves.plan(self.c, self.cfg.mode, self.cfg.layer, number)
+        self.plan = waves.plan(self.c, self.cfg.mode, self.cfg.layer, number, self.mission)
         self.wave_time = 0.0
         self.budget_acc = 0.0
         self.next_type = None
@@ -128,6 +157,11 @@ class Dive:
         if self.plan.boss:
             x, y = self._far_point(min_distance=320)
             self.spawns.append(Spawn(x, y, self.plan.boss, 1.6, boss=True))
+        if self.objective.get("type") == "nodes":
+            self.nodes_warned = False
+            for _ in range(self.objective.get("per_wave", 2)):
+                x, y = self._far_point(min_distance=200)
+                self.spawns.append(Spawn(x, y, "node", 1.0))
         self.emit("wave", number, self.plan.boss)
 
     def wave_left(self) -> float:
@@ -200,12 +234,30 @@ class Dive:
             self.phase = "over"
             self.result = "aborted"
 
+    def nodes_left(self) -> int:
+        return (sum(1 for e in self.enemies if e.type == "node" and not e.dead)
+                + sum(1 for sp in self.spawns if sp.type == "node"))
+
+    def _after_wave(self):
+        """Depois de uma onda: a escolha de ups, ou o fim da missão."""
+        if self.mission and self.wave >= self.mission["waves"]:
+            self.phase = "over"
+            self.result = "victory"
+            self.emit("mission_done")
+        else:
+            self._to_choice()
+
     def _director(self, dt):
         plan = self.plan
         if plan.duration and self.wave_time >= plan.duration:
-            self._end_wave()
-            self._to_choice()
-            return
+            if self.objective.get("type") == "nodes" and self.nodes_left():
+                if not self.nodes_warned:
+                    self.nodes_warned = True
+                    self.emit("objective", "DESTRUA OS NÓS")
+            else:
+                self._end_wave()
+                self._after_wave()
+                return
         if not plan.pool:
             return
         self.budget_acc = min(self.budget_acc + plan.budget * dt, 18.0)
@@ -303,6 +355,10 @@ class Dive:
         if self.phase != "wave":
             return
         self._update_auto(dt)
+        self._update_objective(dt)
+        self._update_allies(dt)
+        if self.phase != "wave":
+            return
         for e in self.enemies:
             if not e.dead:
                 self._update_enemy(e, dt)
@@ -409,15 +465,15 @@ class Dive:
     def apply_dot(self, e, kind, dps, seconds):
         self.apply_effect(e, kind, seconds, dps)
 
-    def chain(self, hid, h, first, damage, jumps, jump_range, falloff, color, shock=False):
+    def chain(self, hid, h, first, damage, jumps, jump_range, falloff, color, shock=False, origin=None, crit=True):
         tags = h.get("tags", ["cadeia"]) if h else ["cadeia"]
         st = self.stats
         no_falloff = st.flag("no_falloff")
         refund = st.flag("jump_refund")
         fagulha = shock and st.flag("fagulha")
         hit = [first]
-        points = [(self.player.x, self.player.y), (first.x, first.y)]
-        self.hurt(first, damage, hid, tags, color=color)
+        points = [origin or (self.player.x, self.player.y), (first.x, first.y)]
+        self.hurt(first, damage, hid, tags, can_crit=crit, color=color)
         if fagulha and not first.dead:
             self.apply_dot(first, "burn", 6 * st.damage_mult(None, ["cadeia"]), st.dot_time(3))
         current = first
@@ -434,7 +490,7 @@ class Dive:
                 break
             if not no_falloff:
                 damage *= falloff
-            self.hurt(best, damage, hid, tags, color=color)
+            self.hurt(best, damage, hid, tags, can_crit=crit, color=color)
             if fagulha and not best.dead:
                 self.apply_dot(best, "burn", 6 * st.damage_mult(None, ["cadeia"]), st.dot_time(3))
             if refund:
@@ -549,7 +605,7 @@ class Dive:
             self.phase = "over"
             self.result = "victory"
         else:
-            self._to_choice()
+            self._after_wave()
 
     def hurt_player(self, amount, ignore_invulnerable=False):
         p = self.player
@@ -648,6 +704,24 @@ class Dive:
         ai = d["ai"]
         dpx, dpy = p.x - e.x, p.y - e.y
         dp = math.hypot(dpx, dpy)
+        if ai == "node":
+            e.timer -= dt
+            if e.timer <= 0:
+                e.timer = d["spawn_every"]
+                if len(self.enemies) + len(self.spawns) < self.bal["waves"]["max_alive"]:
+                    self.spawns.append(Spawn(e.x + self.rng.uniform(-30, 30), e.y + self.rng.uniform(-30, 30),
+                                             d["spawn"], 0.6))
+            return
+        tx, ty = p.x, p.y
+        node = self.node
+        if node is not None and node.hp > 0 and ai in ("chase", "swarm", "paralyzer", "dropper", "charger"):
+            if dist2(e.x, e.y, node.x, node.y) < dp * dp:
+                tx, ty = node.x, node.y
+            if dist2(e.x, e.y, node.x, node.y) <= (e.radius + node.radius) ** 2 and "stun" not in fx:
+                node.hp -= e.damage * (1 - e.effect("weaken")) * 1.5 * dt
+                if node.hp <= 0:
+                    self._node_down()
+                    return
         # para onde ir
         if mad:
             other = self._nearest_other(e)
@@ -670,7 +744,7 @@ class Dive:
             return
         if ai in ("chase", "paralyzer", "dropper"):
             if not rooted:
-                self._move(e, p.x, p.y, speed, dt)
+                self._move(e, tx, ty, speed, dt)
             if ai == "dropper":
                 e.timer -= dt
                 if e.timer <= 0:
@@ -681,7 +755,7 @@ class Dive:
             if not rooted:
                 e.phase += dt * 4
                 wob = math.sin(e.phase) * 0.6
-                ang = math.atan2(dpy, dpx) + wob
+                ang = math.atan2(ty - e.y, tx - e.x) + wob
                 self._move(e, e.x + math.cos(ang) * 50, e.y + math.sin(ang) * 50, speed, dt)
         elif ai == "ranged" or ai == "hacker":
             want = d["range"]
@@ -706,7 +780,7 @@ class Dive:
                 self._update_hacker(e, dt, dp, blind)
         elif ai == "charger":
             self._update_charger(e, dt, d["charge_every"], d["windup"], d["charge_speed"], d["charge_time"], speed,
-                                 rooted)
+                                 rooted, (tx, ty))
         # encostar machuca
         if dp <= e.radius + self.stats.radius:
             dmg = e.damage * (1 - e.effect("weaken"))
@@ -717,8 +791,9 @@ class Dive:
                     p.root_immune = d["paralyze"] + 1.0
                     self.emit("paralyzed")
 
-    def _update_charger(self, e, dt, every, windup, dash_speed, dash_time, speed, rooted):
+    def _update_charger(self, e, dt, every, windup, dash_speed, dash_time, speed, rooted, target=None):
         p = self.player
+        tx, ty = target if target else (p.x, p.y)
         if e.state == "windup":
             e.state_t -= dt
             if e.state_t <= 0:
@@ -738,10 +813,10 @@ class Dive:
                 e.timer = every
             return
         if not rooted:
-            self._move(e, p.x, p.y, speed, dt)
+            self._move(e, tx, ty, speed, dt)
         e.timer -= dt
-        if e.timer <= 0 and dist2(e.x, e.y, p.x, p.y) < 480 ** 2:
-            dx, dy = p.x - e.x, p.y - e.y
+        if e.timer <= 0 and dist2(e.x, e.y, tx, ty) < 480 ** 2:
+            dx, dy = tx - e.x, ty - e.y
             d = math.hypot(dx, dy) or 1.0
             e.dir = (dx / d, dy / d)
             e.angle = math.atan2(dy, dx)
@@ -1025,3 +1100,78 @@ class Dive:
                 dps = e.fx["poison"][1]
                 self.apply_dot(best, "poison", dps, self.stats.dot_time(3))
                 self.emit("link", e.x, e.y, best.x, best.y, "green")
+
+    # --- o objetivo da missão ------------------------------------------------
+    def _update_objective(self, dt):
+        if not self.mission:
+            return
+        self.mission_time += dt
+        node = self.node
+        if node is not None and node.moving:
+            node.x = min(self.W - 70, node.x + node.speed * dt)
+
+    def mission_progress(self) -> float:
+        if not self.mission_total:
+            return 0.0
+        return min(1.0, self.mission_time / self.mission_total)
+
+    def _node_down(self):
+        self.emit("node_down")
+        self.phase = "over"
+        self.result = "failed"
+
+    # --- os aliados ----------------------------------------------------------
+    def _update_allies(self, dt):
+        if not self.allies:
+            return
+        p = self.player
+        st = self.stats
+        cfg = self.c.story["ally_level"]
+        n = len(self.allies)
+        for a in self.allies:
+            a.flash = max(0.0, a.flash - dt)
+            angle = TAU * a.slot / n + self.time * 0.4
+            gx = p.x + math.cos(angle) * 56
+            gy = p.y + math.sin(angle) * 56
+            a.x += (gx - a.x) * min(1.0, dt * 4)
+            a.y += (gy - a.y) * min(1.0, dt * 4)
+            if self.cfg.ally_pickup:
+                r2 = self.cfg.ally_pickup ** 2
+                for pk in self.pickups:
+                    if dist2(pk.x, pk.y, a.x, a.y) <= r2:
+                        pk.pulled = True
+            a.timer -= dt
+            if a.timer > 0:
+                continue
+            a.timer = a.d["every"]
+            power = (1 + cfg["bonus"] * (a.level - 1)) * st.damage_mult(None, ())
+            role = a.d["role"]
+            color = a.d["color"]
+            if role == "suporte":
+                p.hp = min(st.max_hp, p.hp + st.max_hp * a.d["heal"] * (1 + cfg["bonus"] * (a.level - 1)))
+                self.refund(a.d.get("ram", 0) * (1 + cfg["bonus"] * (a.level - 1)))
+                self.emit("ally_heal", a.x, a.y, p.x, p.y, color)
+                a.flash = 0.3
+                continue
+            near = self.enemies_near(a.x, a.y, 380)
+            if not near:
+                a.timer = 0.3
+                continue
+            if role == "controle":
+                target = max(near, key=lambda e: len(self.enemies_near(e.x, e.y, a.d["radius"])))
+                for e in self.enemies_near(target.x, target.y, a.d["radius"]):
+                    self.hurt(e, a.d["damage"] * power, None, (), can_crit=False, color=color)
+                    if not e.dead:
+                        self.apply_effect(e, "stun", a.d["stun"] * (0.3 if e.boss else 1.0), 1)
+                self.emit("ring", target.x, target.y, a.d["radius"], color)
+            elif a.d.get("jumps", 0) > 0:
+                target = min(near, key=lambda e: dist2(e.x, e.y, a.x, a.y))
+                self.chain(None, None, target, a.d["damage"] * power, a.d["jumps"], 170, 0.85, color, origin=(a.x, a.y),
+                           crit=False)
+            else:
+                target = max(near, key=lambda e: e.hp)
+                self.emit("bolt_from", a.x, a.y, target.x, target.y, color)
+                self.hurt(target, a.d["damage"] * power, None, (), can_crit=False, color=color, heavy=True)
+                if not target.dead and a.d.get("stun"):
+                    self.apply_effect(target, "stun", a.d["stun"] * (0.3 if target.boss else 1.0), 1)
+            a.flash = 0.25

@@ -128,6 +128,18 @@ class FX:
                 self.banner = ("ELE ESTÁ SE RECONSTRUINDO", T.COLORS["green"], 2.0, 2.0)
             elif kind == "lone_wolf":
                 self.banner = (f"LOBO SOLITÁRIO +{int(ev[1] * 100)}%", T.YELLOW, 1.5, 1.5)
+            elif kind == "ally_heal":
+                _, x0, y0, x1, y1, col = ev
+                self.arcs.append([[(x0, y0), (x1, y1)], T.color(col), 0.2])
+                self.texts.append([x1, y1 - 24, -30, 0.8, "+INTEGRIDADE", T.COLORS["green"], 13])
+            elif kind == "objective":
+                self.banner = (ev[1], T.RED, 2.0, 2.0)
+            elif kind == "node_down":
+                self.banner = ("O NÓ CAIU", T.RED, 2.5, 2.5)
+                name = "flatline"
+            elif kind == "mission_done":
+                self.banner = ("MISSÃO CUMPRIDA", T.YELLOW, 2.5, 2.5)
+                name = "victory"
             elif kind == "summon":
                 _, x, y = ev
                 self.rings.append([x, y, 20, 90, 0.4, 0.4, T.RED])

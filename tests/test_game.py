@@ -6,7 +6,7 @@ import pytest
 from blackwall.game import theme as T
 from blackwall.game.app import App
 from blackwall.game.scene_dive import DiveScene
-from blackwall.game.scene_hideout import HideoutScene
+from blackwall.game.scene_hideout import TABS, HideoutScene
 from blackwall.meta import profile as pf
 
 
@@ -32,7 +32,7 @@ def click(app, pos, button=1):
 
 
 def test_every_hideout_tab_draws(app):
-    for tab in ("mergulho", "deck", "loja", "arvore"):
+    for tab, _label in TABS:
         app.switch(HideoutScene(app, tab=tab))
         frames(app, 3)
 
@@ -41,7 +41,7 @@ def test_clicking_a_layer_card_starts_a_dive(app):
     app.switch(HideoutScene(app))
     frames(app, 2)
     scene = app.scene
-    rect = scene.clicks.items[4][0]  # as 4 abas vêm primeiro; depois, o card da 1ª camada
+    rect = scene.clicks.items[len(TABS)][0]  # as abas vêm primeiro; depois, o card da 1ª camada
     click(app, rect.center)
     frames(app, 2)
     assert isinstance(app.scene, DiveScene)
@@ -99,6 +99,36 @@ def test_quitting_mid_dive_counts_as_cut_connection_and_saves(app, tmp_path):
     assert scene.dive.result == "aborted"
     assert (tmp_path / "save.json").exists()
     assert app.profile.ed == 30
+
+
+def test_choosing_a_path_takes_two_clicks(app):
+    from blackwall.meta import story
+    app.profile.layers_cleared = 1
+    app.switch(HideoutScene(app, tab="historia"))
+    frames(app, 2)
+    scene = app.scene
+    buttons = [item for item in scene.clicks.items if item[0].w == 164]
+    assert len(buttons) == 3          # um botão por caminho
+    equipe = buttons[1][0].center
+    click(app, equipe)
+    frames(app, 2)
+    assert app.profile.path is None and scene.armed == "equipe"
+    click(app, equipe)
+    frames(app, 2)
+    assert app.profile.path == "equipe"
+    assert story.quest(app.profile)["team"] == {"juno": 1}
+
+
+def test_a_mission_with_the_team_draws_and_plays(app):
+    from blackwall.meta import profile as pf2
+    app.profile.layers_cleared = 1
+    pf2.choose_path(app.profile, app.content, "equipe")
+    mission = app.content.mission("equipe_1")
+    scene = DiveScene(app, pf2.dive_config(app.profile, app.content, "mission", seed=2, mission=mission), "missão")
+    app.switch(scene)
+    frames(app, 200)
+    assert scene.dive.node is not None and scene.dive.allies
+    assert "download" in scene.objective_text().lower()
 
 
 def test_screen_is_the_logical_size(app):

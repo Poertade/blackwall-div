@@ -17,9 +17,25 @@ class WavePlan:
     pool: dict
 
 
-def plan(content, mode: str, layer: int, number: int) -> WavePlan:
+def plan(content, mode: str, layer: int, number: int, mission: dict | None = None) -> WavePlan:
     bal = content.balance["waves"]
     per = bal["per_layer"]
+    if mode == "mission":
+        layer_index = mission["layer"]
+        data = content.layers[layer_index]
+        objective = mission["objective"]
+        boss = objective.get("target") if objective["type"] == "hunt" and number == mission["waves"] else None
+        duration = 0.0 if boss else min(bal["duration_max"], bal["duration_first"] + bal["duration_step"] * (number - 1))
+        budget = bal["budget_base"] * bal["budget_growth"] ** (number - 1) * data["budget"] * mission.get("budget", 1.0)
+        if boss:
+            budget *= bal["boss_budget"]
+        return WavePlan(
+            number=number, in_layer=number, layer=layer_index, duration=duration, budget=budget,
+            hp=data["hp"] * (1 + bal["hp_growth"] * (number - 1)),
+            damage=data["damage"] * (1 + bal["damage_growth"] * (number - 1)),
+            ed=data["ed"], boss=boss,
+            pool={k: v for k, v in data["pool"].items() if v["from"] <= number + 1},
+        )
     if mode == "infinite":
         cycle = (number - 1) // per
         layer_index = cycle % len(content.layers)

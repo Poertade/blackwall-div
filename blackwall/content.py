@@ -8,7 +8,7 @@ import yaml
 from blackwall.paths import DATA
 from blackwall.sim.stats import FLAG_KEYS, HACK_KEYS, STAT_KEYS, TAGS
 
-AIS = {"chase", "swarm", "ranged", "charger", "dropper", "paralyzer", "hacker"}
+AIS = {"chase", "swarm", "ranged", "charger", "dropper", "paralyzer", "hacker", "node"}
 BOSS_ATTACKS = {"radial", "volley", "spiral", "summon", "charge", "drain", "revive"}
 KINDS = {"combate", "controle", "furtivo", "supremo"}
 RARITIES = {"comum", "raro", "epico"}
@@ -31,6 +31,13 @@ class Content:
     layers: list
     decks: dict
     tree: dict
+    story: dict
+
+    def mission(self, mission_id: str) -> dict:
+        for m in self.story["missions"]:
+            if m["id"] == mission_id:
+                return m
+        raise KeyError(mission_id)
 
     def layer_index(self, layer_id: str) -> int:
         for i, layer in enumerate(self.layers):
@@ -56,6 +63,7 @@ def load(data_dir: Path = DATA) -> Content:
         layers=_read(data_dir / "layers.yaml"),
         decks=_read(data_dir / "decks.yaml"),
         tree=_read(data_dir / "tree.yaml"),
+        story=_read(data_dir / "story.yaml"),
     )
     errors = validate(content)
     if errors:
@@ -79,6 +87,56 @@ def _check_mods(where: str, spec: dict, content: Content, errors: list):
     for key in spec.get("flags") or {}:
         if key not in FLAG_KEYS:
             errors.append(f"{where}: flag desconhecida '{key}'")
+
+
+OBJECTIVES = {"survive", "download", "escort", "nodes", "hunt"}
+
+
+def _check_story(c: Content, errors: list):
+    st = c.story
+    chars = st.get("characters", {})
+    for beat in st.get("beats", []):
+        if beat.get("from") not in chars:
+            errors.append(f"fala {beat.get('id')}: personagem '{beat.get('from')}'")
+        for key in beat.get("when", {}):
+            if key not in ("start", "layers", "path", "mission", "dives"):
+                errors.append(f"fala {beat.get('id')}: condição '{key}'")
+    ids = set()
+    for m in st.get("missions", []):
+        where = f"missão {m.get('id')}"
+        if m.get("id") in ids:
+            errors.append(f"{where}: id repetido")
+        ids.add(m.get("id"))
+        if m.get("path") not in PATHS:
+            errors.append(f"{where}: caminho '{m.get('path')}'")
+        if not 0 <= m.get("layer", -1) < len(c.layers):
+            errors.append(f"{where}: camada {m.get('layer')}")
+        obj = m.get("objective", {})
+        if obj.get("type") not in OBJECTIVES:
+            errors.append(f"{where}: objetivo '{obj.get('type')}'")
+        if obj.get("type") == "hunt" and obj.get("target") not in c.bosses:
+            errors.append(f"{where}: alvo '{obj.get('target')}'")
+        reward = m.get("reward", {})
+        if reward.get("hack") and reward["hack"] not in c.hacks:
+            errors.append(f"{where}: hack '{reward['hack']}'")
+        if reward.get("deck") and reward["deck"] not in c.decks:
+            errors.append(f"{where}: deck '{reward['deck']}'")
+        if reward.get("ally") and reward["ally"] not in st.get("allies", {}):
+            errors.append(f"{where}: aliado '{reward['ally']}'")
+        if m.get("from") not in chars:
+            errors.append(f"{where}: personagem '{m.get('from')}'")
+    for path in PATHS:
+        if path not in st.get("paths", {}):
+            errors.append(f"caminho '{path}' faltando")
+        if path not in st.get("endings", {}):
+            errors.append(f"final '{path}' faltando")
+    for path, team in st.get("team", {}).items():
+        for ally in team:
+            if ally not in st.get("allies", {}):
+                errors.append(f"equipe {path}: aliado '{ally}'")
+    for path, deck in st.get("path_decks", {}).items():
+        if deck not in c.decks:
+            errors.append(f"deck do caminho {path}: '{deck}'")
 
 
 def validate(c: Content) -> list:
@@ -157,6 +215,7 @@ def validate(c: Content) -> list:
         _check_mods(f"árvore {nid}", {"stats": n.get("per_level", {})}, c, errors)
         if n.get("requires") and n["requires"] not in c.tree:
             errors.append(f"árvore {nid}: requires '{n['requires']}'")
+    _check_story(c, errors)
     starting = [h for h, d in c.hacks.items() if d.get("price") == 0]
     if len(starting) < 2:
         errors.append("é preciso pelo menos 2 hacks iniciais (price 0)")

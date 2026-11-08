@@ -95,6 +95,9 @@ def test_winning_layer_one_unlocks_the_next_and_gives_a_hack(content):
     assert summary["reward_hack"] == "synapse_burnout"
     assert p.ed == 200 + content.layers[0]["reward"]["ed"]
     assert pf.infinite_unlocked(p)
+    # a 2ª camada só abre depois da escolha do caminho
+    assert pf.available_layers(p, content) == 1
+    assert pf.choose_path(p, content, "solo")
     assert pf.available_layers(p, content) == 2
 
 

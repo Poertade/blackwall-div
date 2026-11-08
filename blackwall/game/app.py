@@ -39,6 +39,8 @@ class App:
         self.save_dir = save_dir
         self.content = content_mod.load()
         self.profile = save_mod.load(self.content, save_dir)
+        from blackwall.meta import story
+        self.offline_gain = story.offline_income(self.profile, self.content)
         # SCALED: a tela lógica é 1280x720 e o SDL escala para a janela (o mouse já vem na escala lógica)
         if os.environ.get("SDL_VIDEODRIVER") == "dummy":
             self.screen = pygame.display.set_mode((T.W, T.H))
